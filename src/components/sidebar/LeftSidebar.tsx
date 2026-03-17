@@ -15,6 +15,7 @@ const navItems = [
 export function LeftSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout } = useAuth();
 
   return (
     <aside className="hidden lg:flex flex-col gap-3 sticky top-[4.5rem] h-fit">
