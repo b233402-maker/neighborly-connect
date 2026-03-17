@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { MapContainer, TileLayer, Circle, Marker, useMap } from "react-leaflet";
+import { useState, useEffect, useRef } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Eye, Layers } from "lucide-react";
 import { mockPosts } from "@/data/mockData";
@@ -16,61 +15,72 @@ L.Icon.Default.mergeOptions({
 
 const CENTER: [number, number] = [40.7128, -74.006];
 
-function RadiusUpdater({ radius }: { radius: number }) {
-  const map = useMap();
-  useEffect(() => {
-    map.invalidateSize();
-  }, [map, radius]);
-  return null;
-}
-
 export function MiniMap() {
   const [radius, setRadius] = useState([2]);
-  const radiusMeters = radius[0] * 1000;
+  const mapRef = useRef<L.Map | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const circleRef = useRef<L.Circle | null>(null);
+  const postCirclesRef = useRef<L.Circle[]>([]);
+
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    const map = L.map(mapContainerRef.current, {
+      center: CENTER,
+      zoom: 14,
+      zoomControl: false,
+      attributionControl: false,
+    });
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
+
+    // Privacy blur circle
+    const circle = L.circle(CENTER, {
+      radius: radius[0] * 1000,
+      color: "hsl(217, 91%, 53%)",
+      fillColor: "hsl(217, 91%, 53%)",
+      fillOpacity: 0.08,
+      weight: 2,
+      dashArray: "8 4",
+    }).addTo(map);
+    circleRef.current = circle;
+
+    // Post markers
+    mockPosts.forEach((post) => {
+      const c = L.circle([post.lat, post.lng], {
+        radius: 200,
+        color: post.category === "urgent" ? "hsl(38, 92%, 50%)" : "hsl(160, 84%, 39%)",
+        fillColor: post.category === "urgent" ? "hsl(38, 92%, 50%)" : "hsl(160, 84%, 39%)",
+        fillOpacity: 0.2,
+        weight: 1.5,
+      }).addTo(map);
+      postCirclesRef.current.push(c);
+    });
+
+    mapRef.current = map;
+
+    // Ensure proper sizing
+    setTimeout(() => map.invalidateSize(), 100);
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
+  // Update radius circle when slider changes
+  useEffect(() => {
+    if (circleRef.current) {
+      circleRef.current.setRadius(radius[0] * 1000);
+    }
+  }, [radius]);
 
   return (
     <div className="hidden lg:flex flex-col gap-4 sticky top-4 h-fit">
       {/* Map Card */}
       <div className="feed-card p-0 overflow-hidden">
         <div className="relative" style={{ height: 360 }}>
-          <MapContainer
-            center={CENTER}
-            zoom={14}
-            className="h-full w-full rounded-2xl"
-            zoomControl={false}
-            attributionControl={false}
-          >
-            <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
-            <RadiusUpdater radius={radius[0]} />
-
-            {/* Privacy blur circle */}
-            <Circle
-              center={CENTER}
-              radius={radiusMeters}
-              pathOptions={{
-                color: "hsl(217, 91%, 53%)",
-                fillColor: "hsl(217, 91%, 53%)",
-                fillOpacity: 0.08,
-                weight: 2,
-                dashArray: "8 4",
-              }}
-            />
-
-            {/* Post markers */}
-            {mockPosts.map((post) => (
-              <Circle
-                key={post.id}
-                center={[post.lat, post.lng]}
-                radius={200}
-                pathOptions={{
-                  color: post.category === "urgent" ? "hsl(38, 92%, 50%)" : "hsl(160, 84%, 39%)",
-                  fillColor: post.category === "urgent" ? "hsl(38, 92%, 50%)" : "hsl(160, 84%, 39%)",
-                  fillOpacity: 0.2,
-                  weight: 1.5,
-                }}
-              />
-            ))}
-          </MapContainer>
+          <div ref={mapContainerRef} className="h-full w-full rounded-2xl" />
 
           {/* Overlay controls */}
           <div className="absolute top-3 right-3 flex flex-col gap-2 z-[1000]">
