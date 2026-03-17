@@ -16,6 +16,7 @@ L.Icon.Default.mergeOptions({
 const CENTER: [number, number] = [40.7128, -74.006];
 
 export function MiniMap() {
+  // Renders the mini-map widget for the right column
   const [radius, setRadius] = useState([2]);
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -76,7 +77,7 @@ export function MiniMap() {
   }, [radius]);
 
   return (
-    <div className="hidden lg:flex flex-col gap-4 sticky top-4 h-fit">
+    <div className="flex flex-col gap-4 sticky top-[4.5rem] h-fit">
       {/* Map Card */}
       <div className="feed-card p-0 overflow-hidden">
         <div className="relative" style={{ height: 360 }}>
