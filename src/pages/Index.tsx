@@ -1,16 +1,23 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { TopBar } from "@/components/layout/TopBar";
+import { MobileNav } from "@/components/layout/MobileNav";
+import { LeftSidebar } from "@/components/sidebar/LeftSidebar";
+import { FeedColumn } from "@/components/feed/FeedColumn";
+import { MiniMap } from "@/components/map/MiniMap";
 
-// IMPORTANT: Fully REPLACE this with your own code
-const PlaceholderIndex = () => {
-  // PLACEHOLDER: Replace this entire return statement with the user's app.
-  // The inline background color is intentionally not part of the design system.
+const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
+    <div className="min-h-screen bg-background">
+      <TopBar />
+      <main className="max-w-7xl mx-auto px-4 py-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_320px] gap-6">
+          <LeftSidebar />
+          <FeedColumn />
+          <MiniMap />
+        </div>
+      </main>
+      <MobileNav />
     </div>
   );
 };
-
-const Index = PlaceholderIndex;
 
 export default Index;
