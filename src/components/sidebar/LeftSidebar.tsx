@@ -1,6 +1,7 @@
-import { Home, Map, MessageSquare, Bell, User, Star, Shield, Settings, Crown, HandHelping } from "lucide-react";
+import { Home, Map, MessageSquare, Bell, User, Star, Shield, Settings, Crown, HandHelping, LogOut } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { currentUser } from "@/data/mockData";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
   { label: "Feed", icon: Home, path: "/" },
