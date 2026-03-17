@@ -67,10 +67,15 @@ export function LeftSidebar() {
       </nav>
 
       {/* Quick Actions */}
-      <div className="feed-card p-1.5">
+      <div className="feed-card p-1.5 space-y-0.5">
         <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-success hover:bg-success/10 transition-colors">
           <HandHelping className="h-[18px] w-[18px]" />
           <span>My Help History</span>
+        </button>
+        <button onClick={() => { logout(); navigate('/auth'); }}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors">
+          <LogOut className="h-[18px] w-[18px]" />
+          <span>Sign Out</span>
         </button>
       </div>
 

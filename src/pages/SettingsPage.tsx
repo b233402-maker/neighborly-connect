@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { User, Bell, Shield, MapPin, Eye, Crown, LogOut, ChevronRight, ToggleLeft, ToggleRight, Palette, Globe, Lock, Smartphone, HelpCircle, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SettingToggle { label: string; description: string; defaultOn: boolean }
 
