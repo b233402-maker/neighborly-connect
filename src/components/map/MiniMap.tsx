@@ -16,6 +16,7 @@ L.Icon.Default.mergeOptions({
 const CENTER: [number, number] = [40.7128, -74.006];
 
 export function MiniMap() {
+  // Renders the mini-map widget for the right column
   const [radius, setRadius] = useState([2]);
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
