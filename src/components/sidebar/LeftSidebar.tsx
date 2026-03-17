@@ -1,6 +1,7 @@
-import { Home, Map, MessageSquare, Bell, User, Star, Shield, Settings, Crown, HandHelping } from "lucide-react";
+import { Home, Map, MessageSquare, Bell, User, Star, Shield, Settings, Crown, HandHelping, LogOut } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { currentUser } from "@/data/mockData";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
   { label: "Feed", icon: Home, path: "/" },
@@ -14,6 +15,7 @@ const navItems = [
 export function LeftSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout } = useAuth();
 
   return (
     <aside className="hidden lg:flex flex-col gap-3 sticky top-[4.5rem] h-fit">
@@ -65,10 +67,15 @@ export function LeftSidebar() {
       </nav>
 
       {/* Quick Actions */}
-      <div className="feed-card p-1.5">
+      <div className="feed-card p-1.5 space-y-0.5">
         <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-success hover:bg-success/10 transition-colors">
           <HandHelping className="h-[18px] w-[18px]" />
           <span>My Help History</span>
+        </button>
+        <button onClick={() => { logout(); navigate('/auth'); }}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors">
+          <LogOut className="h-[18px] w-[18px]" />
+          <span>Sign Out</span>
         </button>
       </div>
 

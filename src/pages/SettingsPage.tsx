@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { User, Bell, Shield, MapPin, Eye, Crown, LogOut, ChevronRight, ToggleLeft, ToggleRight, Palette, Globe, Lock, Smartphone, HelpCircle, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SettingToggle { label: string; description: string; defaultOn: boolean }
 
@@ -38,6 +39,7 @@ function ToggleRow({ setting }: { setting: SettingToggle }) {
 
 export default function SettingsPage() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [activeSection, setActiveSection] = useState<string | null>(null);
 
   const sections = [
@@ -147,7 +149,8 @@ export default function SettingsPage() {
               ))}
 
               <div className="pt-4 border-t border-border mt-4">
-                <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/10 transition-colors">
+                <button onClick={() => { logout(); navigate('/auth'); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/10 transition-colors">
                   <LogOut className="h-5 w-5" />
                   <span className="text-sm font-medium">Sign Out</span>
                 </button>
