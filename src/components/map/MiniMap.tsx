@@ -77,7 +77,7 @@ export function MiniMap() {
   }, [radius]);
 
   return (
-    <div className="hidden lg:flex flex-col gap-4 sticky top-4 h-fit">
+    <div className="flex flex-col gap-4 sticky top-[4.5rem] h-fit">
       {/* Map Card */}
       <div className="feed-card p-0 overflow-hidden">
         <div className="relative" style={{ height: 360 }}>
