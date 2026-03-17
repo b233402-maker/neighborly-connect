@@ -39,6 +39,7 @@ function ToggleRow({ setting }: { setting: SettingToggle }) {
 
 export default function SettingsPage() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [activeSection, setActiveSection] = useState<string | null>(null);
 
   const sections = [
