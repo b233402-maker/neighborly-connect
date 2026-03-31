@@ -90,6 +90,8 @@ export default function UserProfilePage() {
   const { data: followCounts } = useFollowCounts(userId);
   const toggleFollow = useToggleFollow();
 
+  const [followListOpen, setFollowListOpen] = useState(false);
+  const [followListTab, setFollowListTab] = useState<"followers" | "following">("followers");
   const isOwnProfile = user?.id === userId;
 
   if (isOwnProfile) {
