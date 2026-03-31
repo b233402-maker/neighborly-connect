@@ -5,7 +5,8 @@ import { ArrowLeft, Navigation, Search, Filter, X, Users, MapPin } from "lucide-
 import { MobileNav } from "@/components/layout/MobileNav";
 import { usePosts } from "@/hooks/usePosts";
 import { useNearbyUsers } from "@/hooks/useNearbyUsers";
-import { useUserLocation, filterByPrivacy, blurCoordinates } from "@/hooks/useLocation";
+import { useFriendIds } from "@/hooks/useFollows";
+import { useUserLocation, filterByPrivacy } from "@/hooks/useLocation";
 import { useAuth } from "@/contexts/AuthContext";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
