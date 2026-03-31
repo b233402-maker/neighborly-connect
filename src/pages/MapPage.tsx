@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Slider } from "@/components/ui/slider";
 import { ArrowLeft, Navigation, Search, Filter, X, Users, MapPin, Crown, Lock, Eye } from "lucide-react";
 import { MobileNav } from "@/components/layout/MobileNav";
-import { usePosts } from "@/hooks/usePosts";
+import { usePosts, flattenPostPages } from "@/hooks/usePosts";
 import { useNearbyUsers, useSearchUsers } from "@/hooks/useNearbyUsers";
 import { useFriendIds } from "@/hooks/useFollows";
 import { useUserLocation, filterByPrivacy } from "@/hooks/useLocation";
