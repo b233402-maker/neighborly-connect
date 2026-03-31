@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Heart, MessageCircle, Share2, HandHelping, Send, MoreHorizontal, CornerDownRight } from "lucide-react";
+import { Heart, MessageCircle, Share2, HandHelping, Send, MoreHorizontal, CornerDownRight, Check, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "sonner";
 import { useToggleLike, useComments, useCreateComment, useToggleCommentLike, type PostWithAuthor, type CommentWithAuthor } from "@/hooks/usePosts";
+import { useHasOfferedHelp, useOfferHelp } from "@/hooks/useHelpOffers";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
@@ -124,12 +124,13 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [shared, setShared] = useState(false);
-  const [helped, setHelped] = useState(false);
   const [likesDialogOpen, setLikesDialogOpen] = useState(false);
 
   const toggleLike = useToggleLike();
   const { data: comments } = useComments(showComments ? post.id : '');
   const createComment = useCreateComment();
+  const { data: hasOffered } = useHasOfferedHelp(post.type === "need" ? post.id : '');
+  const offerHelp = useOfferHelp();
 
   const handleLike = () => {
     if (!user) return;
@@ -145,12 +146,12 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
   const handleShare = () => {
     navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
     setShared(true);
-    toast.success("Link copied!");
+    setTimeout(() => setShared(false), 2000);
   };
 
   const handleHelp = () => {
-    setHelped(true);
-    toast.success("Thanks! The poster will be notified.");
+    if (!user || hasOffered || offerHelp.isPending) return;
+    offerHelp.mutate({ postId: post.id });
   };
 
   const goToProfile = () => {
@@ -163,6 +164,7 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
 
   const author = post.author;
   const timeAgo = getTimeAgo(post.created_at);
+  const isOwnPost = post.author_id === user?.id;
 
   return (
     <div className="feed-card">
@@ -198,19 +200,53 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
       </div>
 
       <div className="flex items-center gap-1">
-        <button onClick={handleLike} className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-colors ${post.user_has_liked ? "text-destructive bg-destructive/10" : "text-muted-foreground hover:bg-muted"}`}>
-          <Heart className={`h-4 w-4 ${post.user_has_liked ? "fill-current" : ""}`} /> Like
-        </button>
+        <motion.button
+          onClick={handleLike}
+          whileTap={{ scale: 0.9 }}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-colors ${
+            post.user_has_liked ? "text-destructive bg-destructive/10" : "text-muted-foreground hover:bg-muted"
+          }`}
+        >
+          <Heart className={`h-4 w-4 ${post.user_has_liked ? "fill-current" : ""}`} />
+          {toggleLike.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Like"}
+        </motion.button>
+
         <button onClick={() => setShowComments(!showComments)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-muted-foreground hover:bg-muted transition-colors">
           <MessageCircle className="h-4 w-4" /> Comment
         </button>
-        <button onClick={handleShare} className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-colors ${shared ? "text-primary bg-primary/10" : "text-muted-foreground hover:bg-muted"}`}>
-          <Share2 className="h-4 w-4" /> {shared ? "Shared" : "Share"}
-        </button>
-        {post.type === "need" && (
-          <button onClick={handleHelp} disabled={helped} className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-colors ${helped ? "text-success bg-success/10" : "text-success hover:bg-success/10"}`}>
-            <HandHelping className="h-4 w-4" /> {helped ? "Offered!" : "Help"}
-          </button>
+
+        <motion.button
+          onClick={handleShare}
+          whileTap={{ scale: 0.9 }}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-colors ${
+            shared ? "text-primary bg-primary/10" : "text-muted-foreground hover:bg-muted"
+          }`}
+        >
+          <Share2 className="h-4 w-4" />
+          {shared ? (
+            <><Check className="h-3 w-3" /> Copied</>
+          ) : "Share"}
+        </motion.button>
+
+        {post.type === "need" && !isOwnPost && (
+          <motion.button
+            onClick={handleHelp}
+            whileTap={{ scale: 0.9 }}
+            disabled={!!hasOffered || offerHelp.isPending}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-colors ${
+              hasOffered
+                ? "text-success bg-success/10 cursor-default"
+                : "text-success hover:bg-success/10"
+            }`}
+          >
+            {offerHelp.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : hasOffered ? (
+              <><Check className="h-4 w-4" /> Offered</>
+            ) : (
+              <><HandHelping className="h-4 w-4" /> Help</>
+            )}
+          </motion.button>
         )}
       </div>
 
@@ -224,7 +260,7 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
               <div className="flex gap-2">
                 <Input placeholder="Write a comment..." value={commentText} onChange={(e) => setCommentText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleComment()} className="flex-1 h-9 text-xs rounded-xl" />
                 <button onClick={handleComment} disabled={!commentText.trim() || createComment.isPending} className="h-9 w-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-50">
-                  <Send className="h-3.5 w-3.5" />
+                  {createComment.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                 </button>
               </div>
             </div>

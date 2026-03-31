@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useCreatePost } from "@/hooks/usePosts";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+
 
 const categories = [
   { value: "borrow", label: "Borrow", emoji: "🔄" },
@@ -40,7 +40,7 @@ export function CreatePostModal({ open, onClose }: CreatePostModalProps) {
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { toast.error("Image must be under 5MB"); return; }
+    if (file.size > 5 * 1024 * 1024) { return; }
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
   };
@@ -59,9 +59,9 @@ export function CreatePostModal({ open, onClose }: CreatePostModalProps) {
         setCustomLng(pos.coords.longitude.toFixed(6));
         setUseCustomLocation(true);
         setDetectingLocation(false);
-        toast.success("Location detected!");
+        
       },
-      () => { setDetectingLocation(false); toast.error("Could not get location"); },
+      () => { setDetectingLocation(false); },
       { timeout: 10000 }
     );
   };
@@ -79,13 +79,13 @@ export function CreatePostModal({ open, onClose }: CreatePostModalProps) {
     const ext = imageFile.name.split(".").pop();
     const path = `${user.id}/${Date.now()}.${ext}`;
     const { error } = await supabase.storage.from("post-images").upload(path, imageFile);
-    if (error) { toast.error("Image upload failed"); return null; }
+    if (error) { return null; }
     const { data } = supabase.storage.from("post-images").getPublicUrl(path);
     return data.publicUrl;
   };
 
   const handleSubmit = async () => {
-    if (!title.trim()) { toast.error("Please add a title"); return; }
+    if (!title.trim()) { return; }
     setUploading(true);
     try {
       let imageUrl: string | null = null;
