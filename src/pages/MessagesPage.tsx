@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { Search, Send, Phone, Video, MoreVertical, CheckCheck, Smile, Paperclip, Mic, X, FileText, Image as ImageIcon, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { Search, Send, Phone, Video, CheckCheck, Smile, Paperclip, X, FileText, Image as ImageIcon, Loader2, ArrowLeft, Info, ThumbsUp, Camera } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useConversations, useConversationMessages, useSendMessage, useUploadAttachment } from "@/hooks/useMessages";
@@ -8,34 +8,42 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useSearchParams } from "react-router-dom";
 import { useIsUserOnline, useTypingIndicator } from "@/hooks/usePresence";
 
+function formatMessageTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / 86400000);
+  const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (diffDays === 0) return timeStr;
+  if (diffDays === 1) return `Yesterday ${timeStr}`;
+  if (diffDays < 7) return `${date.toLocaleDateString([], { weekday: 'short' })} ${timeStr}`;
+  return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${timeStr}`;
+}
+
 function getTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return 'Now';
+  if (mins < 60) return `${mins}m`;
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return `${hours}h`;
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString();
+  if (days < 7) return `${days}d`;
+  return new Date(dateStr).toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
 function OnlineIndicator({ className = "" }: { className?: string }) {
-  return (
-    <span className={`absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-success ring-2 ring-card ${className}`} />
-  );
+  return <span className={`absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-success ring-2 ring-card ${className}`} />;
 }
 
 function TypingBubble() {
   return (
-    <div className="flex justify-start">
-      <div className="bg-card border border-border rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-1">
-        <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.2, repeat: Infinity, delay: 0 }}
-          className="block h-2 w-2 rounded-full bg-muted-foreground" />
-        <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.2, repeat: Infinity, delay: 0.2 }}
-          className="block h-2 w-2 rounded-full bg-muted-foreground" />
-        <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.2, repeat: Infinity, delay: 0.4 }}
-          className="block h-2 w-2 rounded-full bg-muted-foreground" />
+    <div className="flex items-end gap-2 pl-10">
+      <div className="bg-muted rounded-[18px] rounded-bl-[4px] px-4 py-2.5 flex items-center gap-1">
+        {[0, 0.2, 0.4].map((d) => (
+          <motion.span key={d} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.2, repeat: Infinity, delay: d }}
+            className="block h-[6px] w-[6px] rounded-full bg-muted-foreground" />
+        ))}
       </div>
     </div>
   );
@@ -43,26 +51,25 @@ function TypingBubble() {
 
 function ChatHeader({ activeConvo, onBack }: { activeConvo: any; onBack: () => void }) {
   const isOnline = useIsUserOnline(activeConvo.otherUser.user_id);
-
+  const avatar = activeConvo.otherUser.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${activeConvo.otherUser.user_id}`;
   return (
-    <div className="flex items-center gap-3 p-4 border-b border-border bg-card shrink-0">
-      <button onClick={onBack} className="p-1 rounded-full hover:bg-muted lg:hidden">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg>
+    <div className="flex items-center gap-2.5 px-3 py-2.5 border-b border-border bg-card shrink-0">
+      <button onClick={onBack} className="p-1.5 -ml-1 rounded-full hover:bg-muted lg:hidden text-primary">
+        <ArrowLeft className="h-5 w-5" />
       </button>
       <div className="relative">
-        <img src={activeConvo.otherUser.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${activeConvo.otherUser.user_id}`} alt="" className="h-10 w-10 rounded-full bg-muted" />
-        {isOnline && <OnlineIndicator />}
+        <img src={avatar} alt="" className="h-9 w-9 rounded-full bg-muted" />
+        {isOnline && <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-success ring-[1.5px] ring-card" />}
       </div>
-      <div className="flex-1">
-        <h3 className="font-semibold text-sm text-foreground">{activeConvo.otherUser.display_name}</h3>
-        <span className={`text-[11px] ${isOnline ? "text-success" : "text-muted-foreground"}`}>
-          {isOnline ? "Online" : "Offline"}
+      <div className="flex-1 min-w-0">
+        <h3 className="font-semibold text-[15px] text-foreground leading-tight truncate">{activeConvo.otherUser.display_name}</h3>
+        <span className={`text-[11px] leading-tight ${isOnline ? "text-success" : "text-muted-foreground"}`}>
+          {isOnline ? "Active now" : "Offline"}
         </span>
       </div>
-      <div className="flex items-center gap-1">
-        <button className="p-2 rounded-full hover:bg-muted"><Phone className="h-4 w-4 text-muted-foreground" /></button>
-        <button className="p-2 rounded-full hover:bg-muted"><Video className="h-4 w-4 text-muted-foreground" /></button>
-        <button className="p-2 rounded-full hover:bg-muted"><MoreVertical className="h-4 w-4 text-muted-foreground" /></button>
+      <div className="flex items-center gap-0.5">
+        <button className="p-2 rounded-full hover:bg-muted"><Phone className="h-5 w-5 text-primary" /></button>
+        <button className="p-2 rounded-full hover:bg-muted"><Video className="h-5 w-5 text-primary" /></button>
       </div>
     </div>
   );
@@ -70,26 +77,24 @@ function ChatHeader({ activeConvo, onBack }: { activeConvo: any; onBack: () => v
 
 function ConversationListItem({ conv, onSelect }: { conv: any; onSelect: (id: string) => void }) {
   const isOnline = useIsUserOnline(conv.otherUser.user_id);
-
   return (
     <motion.button whileTap={{ scale: 0.98 }} onClick={() => onSelect(conv.id)}
-      className="w-full flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors text-left">
+      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 active:bg-muted/70 transition-colors text-left">
       <div className="relative shrink-0">
-        <img src={conv.otherUser.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${conv.otherUser.user_id}`} alt="" className="h-12 w-12 rounded-full bg-muted" />
-        {isOnline && <OnlineIndicator />}
+        <img src={conv.otherUser.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${conv.otherUser.user_id}`} alt="" className="h-14 w-14 rounded-full bg-muted" />
+        {isOnline && <span className="absolute bottom-0.5 right-0.5 block h-3.5 w-3.5 rounded-full bg-success ring-2 ring-card" />}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between">
-          <span className={`text-sm ${conv.unreadCount > 0 ? "font-bold text-foreground" : "font-medium text-foreground"}`}>{conv.otherUser.display_name}</span>
+        <div className="flex items-center justify-between gap-2">
+          <span className={`text-[15px] truncate ${conv.unreadCount > 0 ? "font-bold text-foreground" : "font-medium text-foreground"}`}>{conv.otherUser.display_name}</span>
           {conv.lastMessage && (
-            <span className={`text-xs ${conv.unreadCount > 0 ? "text-primary font-medium" : "text-muted-foreground"}`}>
+            <span className={`text-xs shrink-0 ${conv.unreadCount > 0 ? "text-foreground font-semibold" : "text-muted-foreground"}`}>
               {getTimeAgo(conv.lastMessage.created_at)}
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1.5">
-          {isOnline && <span className="block h-1.5 w-1.5 rounded-full bg-success shrink-0" />}
-          <p className={`text-sm truncate ${conv.unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <p className={`text-[13px] truncate ${conv.unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>
             {conv.lastMessage?.attachment_url ? (
               <span className="inline-flex items-center gap-1">
                 {conv.lastMessage.attachment_type?.startsWith('image/') ? <ImageIcon className="h-3 w-3 inline" /> : <FileText className="h-3 w-3 inline" />}
@@ -97,13 +102,9 @@ function ConversationListItem({ conv, onSelect }: { conv: any; onSelect: (id: st
               </span>
             ) : conv.lastMessage?.content || 'No messages yet'}
           </p>
+          {conv.unreadCount > 0 && <span className="h-2 w-2 rounded-full bg-primary shrink-0" />}
         </div>
       </div>
-      {conv.unreadCount > 0 && (
-        <span className="h-5 min-w-[20px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center px-1.5 shrink-0">
-          {conv.unreadCount}
-        </span>
-      )}
     </motion.button>
   );
 }
@@ -111,31 +112,21 @@ function ConversationListItem({ conv, onSelect }: { conv: any; onSelect: (id: st
 function AttachmentPreview({ file, onRemove }: { file: File; onRemove: () => void }) {
   const isImage = file.type.startsWith('image/');
   const [preview, setPreview] = useState<string | null>(null);
-
   useEffect(() => {
-    if (isImage) {
-      const url = URL.createObjectURL(file);
-      setPreview(url);
-      return () => URL.revokeObjectURL(url);
-    }
+    if (isImage) { const url = URL.createObjectURL(file); setPreview(url); return () => URL.revokeObjectURL(url); }
   }, [file, isImage]);
-
   return (
-    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-      className="relative inline-flex items-center gap-2 bg-muted rounded-xl p-2 pr-8 border border-border">
-      {isImage && preview ? (
-        <img src={preview} alt="" className="h-12 w-12 rounded-lg object-cover" />
-      ) : (
-        <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-          <FileText className="h-5 w-5 text-primary" />
-        </div>
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+      className="relative inline-flex items-center gap-2 bg-muted rounded-xl p-2 pr-8">
+      {isImage && preview ? <img src={preview} alt="" className="h-14 w-14 rounded-lg object-cover" /> : (
+        <div className="h-14 w-14 rounded-lg bg-primary/10 flex items-center justify-center"><FileText className="h-5 w-5 text-primary" /></div>
       )}
       <div className="min-w-0">
         <p className="text-xs font-medium text-foreground truncate max-w-[120px]">{file.name}</p>
         <p className="text-[10px] text-muted-foreground">{(file.size / 1024).toFixed(0)} KB</p>
       </div>
-      <button onClick={onRemove} className="absolute top-1 right-1 p-0.5 rounded-full bg-foreground/10 hover:bg-foreground/20">
-        <X className="h-3 w-3 text-foreground" />
+      <button onClick={onRemove} className="absolute top-1 right-1 p-1 rounded-full bg-foreground/20 hover:bg-foreground/30">
+        <X className="h-3 w-3 text-card" />
       </button>
     </motion.div>
   );
@@ -143,24 +134,41 @@ function AttachmentPreview({ file, onRemove }: { file: File; onRemove: () => voi
 
 function MessageAttachment({ url, type, name, isMine }: { url: string; type: string; name: string; isMine: boolean }) {
   const isImage = type?.startsWith('image/');
-
   if (isImage) {
     return (
-      <a href={url} target="_blank" rel="noopener noreferrer" className="block mt-1.5 -mx-1">
+      <a href={url} target="_blank" rel="noopener noreferrer" className="block -mx-1 -my-0.5">
         <img src={url} alt={name || 'Image'} className="max-w-full max-h-52 rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity" />
       </a>
     );
   }
-
   return (
     <a href={url} target="_blank" rel="noopener noreferrer"
-      className={`flex items-center gap-2 mt-1.5 px-3 py-2 rounded-xl transition-colors ${
-        isMine ? "bg-primary-foreground/10 hover:bg-primary-foreground/20" : "bg-muted hover:bg-muted/80"
-      }`}>
+      className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-colors ${isMine ? "bg-primary-foreground/15 hover:bg-primary-foreground/25" : "bg-background hover:bg-muted"}`}>
       <FileText className="h-4 w-4 shrink-0" />
       <span className="text-xs truncate max-w-[150px]">{name || 'File'}</span>
     </a>
   );
+}
+
+function groupMessages(messages: any[]) {
+  if (!messages?.length) return [];
+  const groups: { senderId: string; messages: any[]; timeLabel: string | null }[] = [];
+  const TIME_GAP = 15 * 60 * 1000;
+  const GROUP_GAP = 5 * 60 * 1000;
+
+  messages.forEach((msg, i) => {
+    const prev = i > 0 ? messages[i - 1] : null;
+    const gap = prev ? new Date(msg.created_at).getTime() - new Date(prev.created_at).getTime() : Infinity;
+    const needsLabel = gap > TIME_GAP;
+    const continueGroup = prev?.sender_id === msg.sender_id && gap < GROUP_GAP && !needsLabel;
+
+    if (continueGroup && groups.length > 0) {
+      groups[groups.length - 1].messages.push(msg);
+    } else {
+      groups.push({ senderId: msg.sender_id, messages: [msg], timeLabel: needsLabel ? formatMessageTime(msg.created_at) : null });
+    }
+  });
+  return groups;
 }
 
 function ChatView({ activeConvo, selectedChat, onBack }: { activeConvo: any; selectedChat: string; onBack: () => void }) {
@@ -174,131 +182,146 @@ function ChatView({ activeConvo, selectedChat, onBack }: { activeConvo: any; sel
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingThrottleRef = useRef<number>(0);
+  const messageGroups = useMemo(() => groupMessages(messages || []), [messages]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, typingUserId]);
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, typingUserId]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);
     const now = Date.now();
-    if (now - typingThrottleRef.current > 2000) {
-      typingThrottleRef.current = now;
-      sendTyping();
-    }
+    if (now - typingThrottleRef.current > 2000) { typingThrottleRef.current = now; sendTyping(); }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        return; // 10MB limit
-      }
-      setPendingFile(file);
-    }
+    if (file && file.size <= 10 * 1024 * 1024) setPendingFile(file);
     e.target.value = '';
   };
 
   const handleSend = async () => {
     if ((!input.trim() && !pendingFile) || !selectedChat) return;
-
     const content = input.trim() || (pendingFile ? `📎 ${pendingFile.name}` : '');
-
     if (pendingFile) {
-      const file = pendingFile;
-      setPendingFile(null);
-      setInput("");
-
+      const file = pendingFile; setPendingFile(null); setInput("");
       uploadAttachment.mutate(file, {
-        onSuccess: (result) => {
-          sendMessage.mutate({
-            conversationId: selectedChat,
-            content,
-            attachmentUrl: result.url,
-            attachmentType: result.type,
-            attachmentName: result.name,
-          });
-        },
+        onSuccess: (r) => sendMessage.mutate({ conversationId: selectedChat, content, attachmentUrl: r.url, attachmentType: r.type, attachmentName: r.name }),
       });
-    } else {
-      sendMessage.mutate({ conversationId: selectedChat, content });
-      setInput("");
-    }
+    } else { sendMessage.mutate({ conversationId: selectedChat, content }); setInput(""); }
   };
 
   const isSending = uploadAttachment.isPending || sendMessage.isPending;
+  const otherAvatar = activeConvo.otherUser.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${activeConvo.otherUser.user_id}`;
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-7rem)] lg:h-[calc(100vh-5rem)] bg-card rounded-2xl border border-border overflow-hidden">
+    <div className="flex flex-col h-[calc(100dvh-7rem)] lg:h-[calc(100vh-5rem)] bg-background lg:bg-card lg:rounded-2xl lg:border lg:border-border overflow-hidden">
       <ChatHeader activeConvo={activeConvo} onBack={onBack} />
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-background/50">
-        <div className="text-center py-2">
-          <span className="text-[10px] text-muted-foreground bg-muted px-3 py-1 rounded-full">Messages</span>
-        </div>
-        {(messages || []).map((msg) => (
-          <motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            className={`flex ${msg.sender_id === user?.id ? "justify-end" : "justify-start"}`}>
-            {msg.sender_id !== user?.id && (
-              <img src={msg.sender?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.sender_id}`} alt="" className="h-7 w-7 rounded-full bg-muted mr-2 self-end" />
-            )}
-            <div className={`max-w-[70%] px-4 py-2.5 text-sm ${
-              msg.sender_id === user?.id ? "bg-primary text-primary-foreground rounded-2xl rounded-br-md" : "bg-card text-foreground rounded-2xl rounded-bl-md border border-border"
-            }`}>
-              {msg.attachment_url && (
-                <MessageAttachment
-                  url={msg.attachment_url}
-                  type={msg.attachment_type || ''}
-                  name={msg.attachment_name || ''}
-                  isMine={msg.sender_id === user?.id}
-                />
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
+        {messages && messages.length > 0 && (
+          <div className="flex flex-col items-center py-4 mb-2">
+            <img src={otherAvatar} alt="" className="h-16 w-16 rounded-full bg-muted mb-2" />
+            <p className="font-semibold text-foreground text-[15px]">{activeConvo.otherUser.display_name}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">You're connected on Neighborly</p>
+          </div>
+        )}
+
+        {messageGroups.map((group, gi) => {
+          const isMine = group.senderId === user?.id;
+          return (
+            <div key={gi}>
+              {group.timeLabel && (
+                <div className="flex justify-center py-3">
+                  <span className="text-[11px] text-muted-foreground font-medium">{group.timeLabel}</span>
+                </div>
               )}
-              {msg.content && !(msg.attachment_url && msg.content.startsWith('📎')) && (
-                <p>{msg.content}</p>
-              )}
-              <div className={`flex items-center gap-1 mt-1 ${msg.sender_id === user?.id ? "justify-end" : ""}`}>
-                <span className="text-[10px] opacity-60">{getTimeAgo(msg.created_at)}</span>
-                {msg.sender_id === user?.id && <CheckCheck className="h-3 w-3 opacity-60" />}
+              <div className={`flex flex-col ${isMine ? "items-end" : "items-start"} gap-[2px] mb-2`}>
+                {group.messages.map((msg: any, mi: number) => {
+                  const isLast = mi === group.messages.length - 1;
+                  const isFirst = mi === 0;
+                  const isOnly = group.messages.length === 1;
+                  const isEmojiOnly = /^[\p{Emoji}\s]{1,5}$/u.test(msg.content) && !msg.attachment_url;
+
+                  // Messenger-style bubble corners
+                  let r: string;
+                  if (isMine) {
+                    if (isOnly) r = "rounded-[18px] rounded-br-[4px]";
+                    else if (isFirst) r = "rounded-[18px] rounded-br-[4px]";
+                    else if (isLast) r = "rounded-[18px] rounded-tr-[4px]";
+                    else r = "rounded-[18px] rounded-tr-[4px] rounded-br-[4px]";
+                  } else {
+                    if (isOnly) r = "rounded-[18px] rounded-bl-[4px]";
+                    else if (isFirst) r = "rounded-[18px] rounded-bl-[4px]";
+                    else if (isLast) r = "rounded-[18px] rounded-tl-[4px]";
+                    else r = "rounded-[18px] rounded-tl-[4px] rounded-bl-[4px]";
+                  }
+
+                  return (
+                    <div key={msg.id} className={`flex items-end gap-2 max-w-[75%] ${isMine ? "flex-row-reverse" : ""}`}>
+                      {!isMine && (
+                        <div className="w-7 shrink-0">
+                          {isLast && <img src={msg.sender?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.sender_id}`} alt="" className="h-7 w-7 rounded-full bg-muted" />}
+                        </div>
+                      )}
+                      {isEmojiOnly ? (
+                        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-3xl leading-none py-1 px-0.5">{msg.content}</motion.div>
+                      ) : (
+                        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                          className={`px-3 py-[7px] text-[15px] leading-snug ${r} ${isMine ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
+                          {msg.attachment_url && <MessageAttachment url={msg.attachment_url} type={msg.attachment_type || ''} name={msg.attachment_name || ''} isMine={isMine} />}
+                          {msg.content && !(msg.attachment_url && msg.content.startsWith('📎')) && <p>{msg.content}</p>}
+                        </motion.div>
+                      )}
+                    </div>
+                  );
+                })}
+                {/* Time under the last bubble of each group */}
+                <div className={`flex items-center gap-1 mt-0.5 ${isMine ? "justify-end pr-1" : "justify-start pl-9"}`}>
+                  <span className="text-[10px] text-muted-foreground">{formatMessageTime(group.messages[group.messages.length - 1].created_at)}</span>
+                  {isMine && <CheckCheck className="h-3 w-3 text-muted-foreground" />}
+                </div>
               </div>
             </div>
-          </motion.div>
-        ))}
+          );
+        })}
+
         {typingUserId && <TypingBubble />}
         {messages?.length === 0 && !typingUserId && (
-          <div className="text-center py-8">
-            <p className="text-sm text-muted-foreground">No messages yet. Say hello! 👋</p>
+          <div className="flex flex-col items-center py-12">
+            <img src={otherAvatar} alt="" className="h-20 w-20 rounded-full bg-muted mb-3" />
+            <p className="font-semibold text-foreground text-lg">{activeConvo.otherUser.display_name}</p>
+            <p className="text-sm text-muted-foreground mt-1">Say hello to start the conversation 👋</p>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-3 border-t border-border bg-card shrink-0 space-y-2">
+      {/* Messenger-style input */}
+      <div className="px-2 py-2 bg-card shrink-0">
         <AnimatePresence>
-          {pendingFile && (
-            <AttachmentPreview file={pendingFile} onRemove={() => setPendingFile(null)} />
-          )}
+          {pendingFile && <div className="px-2 pb-2"><AttachmentPreview file={pendingFile} onRemove={() => setPendingFile(null)} /></div>}
         </AnimatePresence>
-        <div className="flex items-center gap-2">
-          <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect}
-            accept="image/*,.pdf,.doc,.docx,.txt,.zip,.xlsx,.csv" />
-          <button onClick={() => fileInputRef.current?.click()}
-            className="p-2 rounded-full hover:bg-muted shrink-0">
-            <Paperclip className="h-4 w-4 text-muted-foreground" />
+        <div className="flex items-end gap-1">
+          <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} accept="image/*,.pdf,.doc,.docx,.txt,.zip,.xlsx,.csv" />
+          <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-full hover:bg-muted shrink-0 mb-0.5">
+            <Paperclip className="h-5 w-5 text-primary" />
           </button>
-          <div className="flex-1 flex items-center bg-muted rounded-2xl px-4 py-2.5">
-            <input value={input} onChange={handleInputChange} onKeyDown={(e) => e.key === "Enter" && !isSending && handleSend()}
-              placeholder="Type a message..." className="flex-1 bg-transparent text-sm outline-none text-foreground placeholder:text-muted-foreground" />
-            <button className="ml-2"><Smile className="h-4 w-4 text-muted-foreground" /></button>
+          <button className="p-2 rounded-full hover:bg-muted shrink-0 mb-0.5 lg:hidden">
+            <Camera className="h-5 w-5 text-primary" />
+          </button>
+          <div className="flex-1 flex items-center bg-muted rounded-full px-4 py-2 min-h-[40px]">
+            <input value={input} onChange={handleInputChange} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && !isSending && handleSend()}
+              placeholder="Aa" className="flex-1 bg-transparent text-[15px] outline-none text-foreground placeholder:text-muted-foreground" />
+            <button className="ml-1.5 shrink-0"><Smile className="h-5 w-5 text-primary" /></button>
           </div>
           {(input.trim() || pendingFile) ? (
-            <motion.button whileTap={{ scale: 0.9 }} onClick={handleSend} disabled={isSending}
-              className="h-10 w-10 rounded-full bg-primary flex items-center justify-center shrink-0 disabled:opacity-50">
-              {isSending ? <Loader2 className="h-4 w-4 text-primary-foreground animate-spin" /> : <Send className="h-4 w-4 text-primary-foreground" />}
+            <motion.button whileTap={{ scale: 0.85 }} onClick={handleSend} disabled={isSending} className="p-2 rounded-full shrink-0 mb-0.5 disabled:opacity-50">
+              {isSending ? <Loader2 className="h-5 w-5 text-primary animate-spin" /> : <Send className="h-5 w-5 text-primary" />}
             </motion.button>
           ) : (
-            <button className="h-10 w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
-              <Mic className="h-4 w-4 text-muted-foreground" />
-            </button>
+            <motion.button whileTap={{ scale: 0.85 }} onClick={() => sendMessage.mutate({ conversationId: selectedChat, content: '👍' })}
+              className="p-2 rounded-full shrink-0 mb-0.5">
+              <ThumbsUp className="h-5 w-5 text-primary" />
+            </motion.button>
           )}
         </div>
       </div>
