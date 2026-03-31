@@ -34,6 +34,7 @@ export default function MapPage() {
 
   const { data: posts } = usePosts();
   const { data: nearbyUsers } = useNearbyUsers();
+  const { data: friendIds } = useFriendIds();
 
   const sel = (posts || []).find((p) => p.id === selectedPostId);
 
