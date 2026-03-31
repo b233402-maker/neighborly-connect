@@ -14,6 +14,9 @@ export interface ConversationItem {
     content: string;
     created_at: string;
     sender_id: string;
+    attachment_url?: string | null;
+    attachment_type?: string | null;
+    attachment_name?: string | null;
   } | null;
   unreadCount: number;
 }
