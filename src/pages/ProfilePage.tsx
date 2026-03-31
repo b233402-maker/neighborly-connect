@@ -232,6 +232,14 @@ export default function ProfilePage() {
             )}
           </div>
         </div>
+        {user && (
+          <FollowListDialog
+            open={followListOpen}
+            onOpenChange={setFollowListOpen}
+            userId={user.id}
+            initialTab={followListTab}
+          />
+        )}
       </div>
     </AppLayout>
   );
