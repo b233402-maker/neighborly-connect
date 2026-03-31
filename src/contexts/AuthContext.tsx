@@ -1,117 +1,193 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { lovable } from '@/integrations/lovable';
 import { toast } from 'sonner';
+import type { User, Session } from '@supabase/supabase-js';
 
-interface User {
+interface Profile {
   id: string;
-  name: string;
-  email: string;
-  avatar: string;
-  provider: 'email' | 'google';
+  user_id: string;
+  display_name: string;
+  email: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  karma: number;
+  verified: boolean;
+  is_pro: boolean;
+  lat: number | null;
+  lng: number | null;
+  privacy_level: string;
 }
 
 interface AuthContextType {
   user: User | null;
+  profile: Profile | null;
+  session: Session | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const DUMMY_USERS: Record<string, { password: string; user: User }> = {
-  'demo@neighborly.app': {
-    password: 'demo123',
-    user: {
-      id: 'u1',
-      name: 'Rahim Ahmed',
-      email: 'demo@neighborly.app',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Rahim',
-      provider: 'email',
-    },
-  },
-};
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('neighborly_user');
-    return saved ? JSON.parse(saved) : null;
-  });
-  const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  const fetchProfile = useCallback(async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+        return null;
+      }
+      return data as Profile;
+    } catch (err) {
+      console.error('Profile fetch failed:', err);
+      return null;
+    }
+  }, []);
+
+  const checkAdminRole = useCallback(async (userId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('has_role', {
+        _user_id: userId,
+        _role: 'admin',
+      });
+      if (!error) setIsAdmin(!!data);
+    } catch {
+      setIsAdmin(false);
+    }
+  }, []);
+
+  const refreshProfile = useCallback(async () => {
+    if (!user) return;
+    const p = await fetchProfile(user.id);
+    if (p) setProfile(p);
+  }, [user, fetchProfile]);
+
+  // Set up auth listener BEFORE checking session
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, newSession) => {
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+
+        if (newSession?.user) {
+          // Defer profile fetch to avoid Supabase deadlock
+          setTimeout(async () => {
+            const p = await fetchProfile(newSession.user.id);
+            if (p) setProfile(p);
+            await checkAdminRole(newSession.user.id);
+            setIsLoading(false);
+          }, 0);
+        } else {
+          setProfile(null);
+          setIsAdmin(false);
+          setIsLoading(false);
+        }
+      }
+    );
+
+    // Then check existing session
+    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+      if (existingSession?.user) {
+        setSession(existingSession);
+        setUser(existingSession.user);
+        fetchProfile(existingSession.user.id).then(p => {
+          if (p) setProfile(p);
+          checkAdminRole(existingSession.user.id).then(() => setIsLoading(false));
+        });
+      } else {
+        setIsLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [fetchProfile, checkAdminRole]);
 
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    const entry = DUMMY_USERS[email.toLowerCase()];
-    if (entry && entry.password === password) {
-      setUser(entry.user);
-      localStorage.setItem('neighborly_user', JSON.stringify(entry.user));
-      toast.success(`Welcome back, ${entry.user.name}!`);
-    } else {
-      // Auto-register for any email/password combo in dummy mode
-      const newUser: User = {
-        id: `u_${Date.now()}`,
-        name: email.split('@')[0],
-        email,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-        provider: 'email',
-      };
-      DUMMY_USERS[email.toLowerCase()] = { password, user: newUser };
-      setUser(newUser);
-      localStorage.setItem('neighborly_user', JSON.stringify(newUser));
-      toast.success(`Welcome, ${newUser.name}!`);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      toast.error(error.message);
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
   const loginWithGoogle = useCallback(async () => {
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    const googleUser: User = {
-      id: 'g_' + Date.now(),
-      name: 'Google User',
-      email: 'user@gmail.com',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Google',
-      provider: 'google',
-    };
-    setUser(googleUser);
-    localStorage.setItem('neighborly_user', JSON.stringify(googleUser));
-    toast.success('Signed in with Google!');
-    setIsLoading(false);
+    try {
+      const result = await lovable.auth.signInWithOAuth('google', {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) {
+        toast.error('Google sign-in failed. Please try again.');
+        setIsLoading(false);
+      }
+    } catch {
+      toast.error('Google sign-in failed. Please try again.');
+      setIsLoading(false);
+    }
   }, []);
 
   const register = useCallback(async (name: string, email: string, password: string) => {
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    if (DUMMY_USERS[email.toLowerCase()]) {
-      toast.error('Email already registered. Try logging in.');
-      setIsLoading(false);
-      return;
-    }
-    const newUser: User = {
-      id: `u_${Date.now()}`,
-      name,
+    const { error } = await supabase.auth.signUp({
       email,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
-      provider: 'email',
-    };
-    DUMMY_USERS[email.toLowerCase()] = { password, user: newUser };
-    setUser(newUser);
-    localStorage.setItem('neighborly_user', JSON.stringify(newUser));
-    toast.success(`Welcome to Neighborly, ${name}!`);
-    setIsLoading(false);
+      password,
+      options: {
+        data: { full_name: name },
+        emailRedirectTo: window.location.origin,
+      },
+    });
+    if (error) {
+      toast.error(error.message);
+      setIsLoading(false);
+    } else {
+      toast.success('Check your email to verify your account!');
+      setIsLoading(false);
+    }
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('neighborly_user');
+    setSession(null);
+    setProfile(null);
+    setIsAdmin(false);
     toast.success('Logged out successfully');
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, loginWithGoogle, register, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        profile,
+        session,
+        isAuthenticated: !!session,
+        isLoading,
+        isAdmin,
+        login,
+        loginWithGoogle,
+        register,
+        logout,
+        refreshProfile,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
