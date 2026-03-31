@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Star, Shield, Crown, MapPin, Calendar, Edit3, Camera, Users, HandHelping, Heart, MessageCircle, Award, TrendingUp, UserCheck } from "lucide-react";
+import { Star, Shield, Crown, MapPin, Calendar, Edit3, Users, HandHelping, MessageCircle, Award, UserCheck, Lock, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,13 +8,35 @@ import { useUpdateProfile } from "@/hooks/useProfile";
 import { useFollowCounts } from "@/hooks/useFollows";
 import { FollowListDialog } from "@/components/social/FollowListDialog";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
-const badges = [
-  { label: "Early Adopter", emoji: "🌟", desc: "Joined in the first month" },
-  { label: "Super Helper", emoji: "🦸", desc: "Helped 25+ neighbors" },
-  { label: "Trusted Voice", emoji: "🎙️", desc: "50+ comments with likes" },
-  { label: "Tool Lender", emoji: "🔧", desc: "Shared tools 10+ times" },
+interface BadgeDef {
+  key: string;
+  label: string;
+  emoji: string;
+  desc: string;
+  check: (stats: BadgeStats) => boolean;
+}
+
+interface BadgeStats {
+  karma: number;
+  postCount: number;
+  helpCount: number;
+  acceptedHelpCount: number;
+  joinedDays: number;
+  commentCount: number;
+}
+
+const badgeDefs: BadgeDef[] = [
+  { key: "early_adopter", label: "Early Adopter", emoji: "🌟", desc: "Joined in the first 30 days", check: (s) => s.joinedDays <= 30 },
+  { key: "first_post", label: "First Post", emoji: "📝", desc: "Created your first post", check: (s) => s.postCount >= 1 },
+  { key: "helper", label: "Helping Hand", emoji: "🤝", desc: "Offered help 5+ times", check: (s) => s.helpCount >= 5 },
+  { key: "super_helper", label: "Super Helper", emoji: "🦸", desc: "Offered help 25+ times", check: (s) => s.helpCount >= 25 },
+  { key: "trusted", label: "Trusted Neighbor", emoji: "🛡️", desc: "Reached 50+ karma", check: (s) => s.karma >= 50 },
+  { key: "community_star", label: "Community Star", emoji: "⭐", desc: "Reached 200+ karma", check: (s) => s.karma >= 200 },
+  { key: "active_poster", label: "Active Poster", emoji: "🎙️", desc: "Created 10+ posts", check: (s) => s.postCount >= 10 },
+  { key: "reliable", label: "Reliable Helper", emoji: "✅", desc: "5+ help offers accepted", check: (s) => s.acceptedHelpCount >= 5 },
 ];
 
 const tabs = ["Activity", "Badges", "About"];
@@ -31,6 +53,37 @@ function getTimeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString();
 }
 
+function useBadgeStats(userId: string | undefined) {
+  return useQuery({
+    queryKey: ['badge-stats', userId],
+    queryFn: async (): Promise<BadgeStats> => {
+      if (!userId) return { karma: 0, postCount: 0, helpCount: 0, acceptedHelpCount: 0, joinedDays: 999, commentCount: 0 };
+
+      const [profileRes, postsRes, helpRes, commentsRes] = await Promise.all([
+        supabase.from('profiles').select('karma, created_at').eq('user_id', userId).single(),
+        supabase.from('posts').select('id', { count: 'exact', head: true }).eq('author_id', userId),
+        supabase.from('help_offers').select('id, status').eq('user_id', userId),
+        supabase.from('comments').select('id', { count: 'exact', head: true }).eq('author_id', userId),
+      ]);
+
+      const joinedDate = profileRes.data?.created_at ? new Date(profileRes.data.created_at) : new Date();
+      const joinedDays = Math.floor((Date.now() - joinedDate.getTime()) / (1000 * 60 * 60 * 24));
+      const helpOffers = helpRes.data || [];
+
+      return {
+        karma: profileRes.data?.karma || 0,
+        postCount: postsRes.count || 0,
+        helpCount: helpOffers.length,
+        acceptedHelpCount: helpOffers.filter((h) => h.status === 'accepted').length,
+        joinedDays,
+        commentCount: commentsRes.count || 0,
+      };
+    },
+    enabled: !!userId,
+    staleTime: 60_000,
+  });
+}
+
 export default function ProfilePage() {
   const { profile, user } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
@@ -41,8 +94,8 @@ export default function ProfilePage() {
   const { data: followCounts } = useFollowCounts(user?.id);
   const [followListOpen, setFollowListOpen] = useState(false);
   const [followListTab, setFollowListTab] = useState<"followers" | "following">("followers");
+  const { data: badgeStats, isLoading: badgeLoading } = useBadgeStats(user?.id);
 
-  // Fetch user's own posts
   const { data: allPosts } = usePosts();
   const userPosts = (allPosts || []).filter((p) => p.author_id === user?.id);
 
@@ -58,6 +111,9 @@ export default function ProfilePage() {
     });
   };
 
+  const earnedBadges = badgeStats ? badgeDefs.filter((b) => b.check(badgeStats)) : [];
+  const lockedBadges = badgeStats ? badgeDefs.filter((b) => !b.check(badgeStats)) : badgeDefs;
+
   const stats = [
     { label: "Posts", value: userPosts.length, icon: MessageCircle, color: "text-primary", bg: "bg-primary/10" },
     { label: "Followers", value: followCounts?.followers || 0, icon: Users, color: "text-accent", bg: "bg-accent/10", clickable: true },
@@ -70,15 +126,12 @@ export default function ProfilePage() {
       <div className="lg:col-span-1 xl:col-span-2 space-y-4 pb-20 lg:pb-0">
         {/* Profile Header Card */}
         <div className="bg-card rounded-2xl border border-border overflow-hidden">
-          {/* Cover */}
           <div className="h-32 sm:h-40 bg-gradient-to-br from-primary/20 via-primary/10 to-accent/10 relative">
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiMyNTYzRUIiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIvPjwvZz48L2c+PC9zdmc+')] opacity-50" />
           </div>
 
-          {/* Profile Info */}
           <div className="px-4 sm:px-6 pb-6 -mt-12 sm:-mt-14 relative">
             <div className="flex flex-col sm:flex-row sm:items-end gap-4">
-              {/* Avatar */}
               <div className="relative shrink-0">
                 <img src={profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`} alt={profile?.display_name || 'User'}
                   className="h-24 w-24 sm:h-28 sm:w-28 rounded-2xl bg-muted border-4 border-card shadow-lg object-cover" />
@@ -89,7 +142,6 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              {/* Name & Info */}
               <div className="flex-1 min-w-0 pt-1">
                 {editing ? (
                   <div className="space-y-2">
@@ -122,7 +174,6 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              {/* Action buttons */}
               {!editing && (
                 <div className="flex items-center gap-2 shrink-0">
                   <div className="karma-badge text-sm">
@@ -194,17 +245,58 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {/* Badges Tab */}
+            {/* Badges Tab - Dynamic */}
             {activeTab === 1 && (
-              <div className="grid grid-cols-2 gap-3">
-                {badges.map((badge, i) => (
-                  <motion.div key={badge.label} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.08 }}
-                    className="flex flex-col items-center p-4 rounded-2xl border border-border hover:border-accent/30 hover:bg-accent/5 transition-all text-center">
-                    <span className="text-3xl mb-2">{badge.emoji}</span>
-                    <span className="text-sm font-semibold text-foreground">{badge.label}</span>
-                    <span className="text-[10px] text-muted-foreground mt-0.5">{badge.desc}</span>
-                  </motion.div>
-                ))}
+              <div className="space-y-4">
+                {badgeLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <>
+                    {earnedBadges.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                          <Award className="h-3.5 w-3.5" /> Earned ({earnedBadges.length})
+                        </h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          {earnedBadges.map((badge, i) => (
+                            <motion.div key={badge.key} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.08 }}
+                              className="flex flex-col items-center p-4 rounded-2xl border border-accent/30 bg-accent/5 hover:bg-accent/10 transition-all text-center">
+                              <span className="text-3xl mb-2">{badge.emoji}</span>
+                              <span className="text-sm font-semibold text-foreground">{badge.label}</span>
+                              <span className="text-[10px] text-muted-foreground mt-0.5">{badge.desc}</span>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {lockedBadges.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                          <Lock className="h-3.5 w-3.5" /> Locked ({lockedBadges.length})
+                        </h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          {lockedBadges.map((badge, i) => (
+                            <motion.div key={badge.key} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.04 }}
+                              className="flex flex-col items-center p-4 rounded-2xl border border-border bg-muted/30 text-center opacity-60">
+                              <span className="text-3xl mb-2 grayscale">{badge.emoji}</span>
+                              <span className="text-sm font-semibold text-foreground">{badge.label}</span>
+                              <span className="text-[10px] text-muted-foreground mt-0.5">{badge.desc}</span>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {earnedBadges.length === 0 && (
+                      <p className="text-center text-muted-foreground text-sm py-4">
+                        Start helping neighbors to earn badges! 🏆
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
             )}
 
@@ -226,6 +318,7 @@ export default function ProfilePage() {
                   <div className="flex flex-wrap gap-3">
                     {profile?.verified && <span className="flex items-center gap-1.5 text-sm text-foreground"><Shield className="h-4 w-4 text-primary" /> Identity Verified</span>}
                     <span className="flex items-center gap-1.5 text-sm text-foreground"><Star className="h-4 w-4 text-karma fill-karma" /> {profile?.karma || 0} Karma</span>
+                    <span className="flex items-center gap-1.5 text-sm text-foreground"><Award className="h-4 w-4 text-accent" /> {earnedBadges.length} Badges</span>
                   </div>
                 </div>
               </div>
