@@ -325,7 +325,8 @@ export default function MessagesPage() {
   return (
     <AppLayout>
     <div className="lg:col-span-1 xl:col-span-2">
-      <h1 className="font-display font-bold text-2xl text-foreground mb-4">Messages</h1>
+      {/* Hide title on mobile when chat is open */}
+      <h1 className={`font-display font-bold text-2xl text-foreground mb-4 ${selectedChat && activeConvo ? 'hidden lg:block' : ''}`}>Messages</h1>
       <div className="hidden lg:grid lg:grid-cols-[320px_1fr] gap-4">
         <div>
           <ConversationList
@@ -362,6 +363,10 @@ export default function MessagesPage() {
         )}
       </div>
     </div>
+    {/* Hide mobile nav when chat is active on mobile */}
+    {selectedChat && activeConvo && (
+      <style>{`@media (max-width: 1023px) { .mobile-nav-bar { display: none !important; } }`}</style>
+    )}
     </AppLayout>
   );
 }
