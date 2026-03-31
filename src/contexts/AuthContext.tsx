@@ -75,6 +75,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  const checkSubscription = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('check-subscription');
+      if (error) {
+        console.error('Subscription check failed:', error);
+        return;
+      }
+      // The edge function syncs is_pro in the DB, so re-fetch profile
+      if (data?.subscribed !== undefined) {
+        // Profile will be refreshed after this
+        return data.subscribed as boolean;
+      }
+    } catch (err) {
+      console.error('Subscription check error:', err);
+    }
+    return undefined;
+  }, []);
+
   const refreshProfile = useCallback(async () => {
     if (!user) return;
     const p = await fetchProfile(user.id);
@@ -95,6 +113,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (p) setProfile(p);
             await checkAdminRole(newSession.user.id);
             setIsLoading(false);
+            // Check subscription in background (syncs is_pro)
+            checkSubscription().then(async (subscribed) => {
+              if (subscribed !== undefined) {
+                const refreshed = await fetchProfile(newSession.user.id);
+                if (refreshed) setProfile(refreshed);
+              }
+            });
           }, 0);
         } else {
           setProfile(null);
@@ -112,6 +137,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         fetchProfile(existingSession.user.id).then(p => {
           if (p) setProfile(p);
           checkAdminRole(existingSession.user.id).then(() => setIsLoading(false));
+          // Check subscription
+          checkSubscription().then(async (subscribed) => {
+            if (subscribed !== undefined) {
+              const refreshed = await fetchProfile(existingSession.user.id);
+              if (refreshed) setProfile(refreshed);
+            }
+          });
         });
       } else {
         setIsLoading(false);
@@ -119,7 +151,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchProfile, checkAdminRole]);
+  }, [fetchProfile, checkAdminRole, checkSubscription]);
+
+  // Periodic subscription check every 60 seconds
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(async () => {
+      const subscribed = await checkSubscription();
+      if (subscribed !== undefined) {
+        const p = await fetchProfile(user.id);
+        if (p) setProfile(p);
+      }
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, [user, checkSubscription, fetchProfile]);
+
+  // Check subscription on URL params (returning from Stripe checkout)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('subscription') === 'success' && user) {
+      // Delay to give Stripe time to process
+      setTimeout(async () => {
+        await checkSubscription();
+        const p = await fetchProfile(user.id);
+        if (p) {
+          setProfile(p);
+          if (p.is_pro) toast.success('🎉 Welcome to Pro Neighbor! Your subscription is active.');
+        }
+      }, 2000);
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [user, checkSubscription, fetchProfile]);
 
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
