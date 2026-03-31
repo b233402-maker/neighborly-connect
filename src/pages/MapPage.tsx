@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Slider } from "@/components/ui/slider";
 import { ArrowLeft, Layers, Navigation, Search, X, Filter } from "lucide-react";
-import { mockPosts } from "@/data/mockData";
 import { MobileNav } from "@/components/layout/MobileNav";
+import { usePosts } from "@/hooks/usePosts";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -22,25 +22,25 @@ export default function MapPage() {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const circleRef = useRef<L.Circle | null>(null);
-  const [selectedPost, setSelectedPost] = useState<string | null>(null);
+  const markersRef = useRef<L.CircleMarker[]>([]);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("all");
 
+  const { data: posts } = usePosts();
+
+  // Find selected post
+  const sel = (posts || []).find((p) => p.id === selectedPostId);
+
+  // Init map
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     const map = L.map(containerRef.current, { center: CENTER, zoom: 14, zoomControl: false, attributionControl: false });
     L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
 
     const circle = L.circle(CENTER, {
-      radius: radius[0] * 1000, color: "hsl(217, 91%, 53%)", fillColor: "hsl(217, 91%, 53%)", fillOpacity: 0.06, weight: 2, dashArray: "8 4",
+      radius: 5000, color: "hsl(217, 91%, 53%)", fillColor: "hsl(217, 91%, 53%)", fillOpacity: 0.06, weight: 2, dashArray: "8 4",
     }).addTo(map);
     circleRef.current = circle;
-
-    mockPosts.forEach((post) => {
-      const color = post.category === "urgent" ? "#F59E0B" : post.type === "offer" ? "#10B981" : "#2563EB";
-      const c = L.circleMarker([post.lat, post.lng], { radius: 12, color, fillColor: color, fillOpacity: 0.3, weight: 2 }).addTo(map);
-      c.bindPopup(`<div style="font-family:Inter,sans-serif;min-width:180px"><strong style="font-size:13px">${post.title}</strong><br/><small style="color:#64748b">${post.author.name} · ${post.createdAt}</small><br/><span style="font-size:11px;background:${color}15;color:${color};padding:2px 8px;border-radius:12px;display:inline-block;margin-top:4px">${post.category}</span></div>`);
-      c.on("click", () => setSelectedPost(post.id));
-    });
 
     L.circleMarker(CENTER, { radius: 8, color: "#2563EB", fillColor: "#2563EB", fillOpacity: 1, weight: 3 }).addTo(map);
     mapRef.current = map;
@@ -48,9 +48,27 @@ export default function MapPage() {
     return () => { map.remove(); mapRef.current = null; };
   }, []);
 
-  useEffect(() => { circleRef.current?.setRadius(radius[0] * 1000); }, [radius]);
+  // Update markers when posts change
+  useEffect(() => {
+    if (!mapRef.current || !posts) return;
 
-  const sel = mockPosts.find(p => p.id === selectedPost);
+    // Clear old markers
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+
+    const filteredPosts = filter === "all" ? posts : posts.filter((p) => p.category === filter || p.type === filter);
+
+    filteredPosts.forEach((post) => {
+      if (!post.lat || !post.lng) return;
+      const color = post.category === "urgent" ? "#F59E0B" : post.type === "offer" ? "#10B981" : "#2563EB";
+      const marker = L.circleMarker([post.lat, post.lng], { radius: 12, color, fillColor: color, fillOpacity: 0.3, weight: 2 }).addTo(mapRef.current!);
+      marker.bindPopup(`<div style="font-family:Inter,sans-serif;min-width:180px"><strong style="font-size:13px">${post.title}</strong><br/><small style="color:#64748b">${post.author?.display_name || 'User'}</small><br/><span style="font-size:11px;background:${color}15;color:${color};padding:2px 8px;border-radius:12px;display:inline-block;margin-top:4px">${post.category}</span></div>`);
+      marker.on("click", () => setSelectedPostId(post.id));
+      markersRef.current.push(marker);
+    });
+  }, [posts, filter]);
+
+  useEffect(() => { circleRef.current?.setRadius(radius[0] * 1000); }, [radius]);
 
   return (
     <div className="h-screen flex flex-col bg-background relative">
@@ -87,14 +105,14 @@ export default function MapPage() {
       <div className="absolute bottom-20 lg:bottom-4 left-4 right-4 z-[1000] space-y-2">
         {sel && (
           <div className="glass-overlay p-4">
-            <button onClick={() => setSelectedPost(null)} className="absolute top-2 right-2 p-1 rounded-full hover:bg-muted">
+            <button onClick={() => setSelectedPostId(null)} className="absolute top-2 right-2 p-1 rounded-full hover:bg-muted">
               <X className="h-4 w-4 text-muted-foreground" />
             </button>
             <div className="flex items-center gap-3">
-              <img src={sel.author.avatar} alt="" className="h-11 w-11 rounded-xl bg-muted shrink-0" />
+              <img src={sel.author?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${sel.author_id}`} alt="" className="h-11 w-11 rounded-xl bg-muted shrink-0" />
               <div className="flex-1 min-w-0">
                 <h4 className="font-display font-semibold text-sm text-foreground truncate">{sel.title}</h4>
-                <p className="text-xs text-muted-foreground">{sel.author.name} · {sel.createdAt}</p>
+                <p className="text-xs text-muted-foreground">{sel.author?.display_name || 'User'}</p>
               </div>
               <button className="btn-help text-xs py-1.5 px-3">Help</button>
             </div>

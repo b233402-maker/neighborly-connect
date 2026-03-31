@@ -21,18 +21,26 @@ export function useAdminPosts() {
   return useQuery({
     queryKey: ['admin', 'posts'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: posts, error } = await supabase
         .from('posts')
-        .select(`
-          *,
-          author:profiles!posts_author_id_fkey(display_name, avatar_url, email)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return (data || []).map((p) => ({
+      if (!posts?.length) return [];
+
+      const authorIds = [...new Set(posts.map((p) => p.author_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, avatar_url, email')
+        .in('user_id', authorIds);
+
+      const profileMap: Record<string, any> = {};
+      (profiles || []).forEach((p) => { profileMap[p.user_id] = p; });
+
+      return posts.map((p) => ({
         ...p,
-        author: Array.isArray(p.author) ? p.author[0] : p.author,
+        author: profileMap[p.author_id] || null,
       }));
     },
   });
@@ -42,20 +50,31 @@ export function useAdminReports() {
   return useQuery({
     queryKey: ['admin', 'reports'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: reports, error } = await supabase
         .from('reports')
-        .select(`
-          *,
-          reporter:profiles!reports_reporter_id_fkey(display_name),
-          reported_user:profiles!reports_reported_user_id_fkey(display_name)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return (data || []).map((r) => ({
+      if (!reports?.length) return [];
+
+      const userIds = [...new Set([
+        ...reports.map((r) => r.reporter_id),
+        ...reports.filter((r) => r.reported_user_id).map((r) => r.reported_user_id!),
+      ])];
+
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, display_name')
+        .in('user_id', userIds);
+
+      const profileMap: Record<string, any> = {};
+      (profiles || []).forEach((p) => { profileMap[p.user_id] = p; });
+
+      return reports.map((r) => ({
         ...r,
-        reporter: Array.isArray(r.reporter) ? r.reporter[0] : r.reporter,
-        reported_user: Array.isArray(r.reported_user) ? r.reported_user[0] : r.reported_user,
+        reporter: profileMap[r.reporter_id] || null,
+        reported_user: r.reported_user_id ? profileMap[r.reported_user_id] || null : null,
       }));
     },
   });

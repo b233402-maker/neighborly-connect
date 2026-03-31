@@ -1,15 +1,12 @@
 import { useState } from "react";
-import { Star, Shield, Crown, MapPin, Calendar, Edit3, Camera, Users, HandHelping, Heart, MessageCircle, Award, TrendingUp, ExternalLink } from "lucide-react";
+import { Star, Shield, Crown, MapPin, Calendar, Edit3, Camera, Users, HandHelping, Heart, MessageCircle, Award, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
-import { currentUser, mockPosts } from "@/data/mockData";
 import { AppLayout } from "@/components/layout/AppLayout";
-
-const stats = [
-  { label: "People Helped", value: 28, icon: HandHelping, color: "text-success", bg: "bg-success/10" },
-  { label: "Posts Created", value: 14, icon: MessageCircle, color: "text-primary", bg: "bg-primary/10" },
-  { label: "Likes Received", value: 156, icon: Heart, color: "text-primary", bg: "bg-primary/10" },
-  { label: "Connections", value: 42, icon: Users, color: "text-accent", bg: "bg-accent/10" },
-];
+import { useAuth } from "@/contexts/AuthContext";
+import { usePosts } from "@/hooks/usePosts";
+import { useUpdateProfile } from "@/hooks/useProfile";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 const badges = [
   { label: "Early Adopter", emoji: "🌟", desc: "Joined in the first month" },
@@ -18,19 +15,50 @@ const badges = [
   { label: "Tool Lender", emoji: "🔧", desc: "Shared tools 10+ times" },
 ];
 
-const helpHistory = [
-  { text: "Helped Mia walk her dog Biscuit 🐕", time: "1 week ago", karma: 10 },
-  { text: "Lent a snow shovel to neighbor ❄️", time: "2 weeks ago", karma: 10 },
-  { text: "Fixed WiFi for Sofia's apartment 📶", time: "3 weeks ago", karma: 15 },
-  { text: "Delivered groceries for elderly neighbor 🛒", time: "1 month ago", karma: 20 },
-  { text: "Helped move furniture for new neighbor 🏠", time: "1 month ago", karma: 15 },
-];
+const tabs = ["Activity", "Badges", "About"];
 
-const tabs = ["Activity", "Helped", "Badges", "About"];
+function getTimeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString();
+}
 
 export default function ProfilePage() {
+  const { profile, user } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
-  const userPosts = mockPosts.filter(p => p.author.id === currentUser.id);
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editBio, setEditBio] = useState('');
+  const updateProfile = useUpdateProfile();
+
+  // Fetch user's own posts
+  const { data: allPosts } = usePosts();
+  const userPosts = (allPosts || []).filter((p) => p.author_id === user?.id);
+
+  const startEdit = () => {
+    setEditName(profile?.display_name || '');
+    setEditBio(profile?.bio || '');
+    setEditing(true);
+  };
+
+  const saveEdit = () => {
+    updateProfile.mutate({ display_name: editName, bio: editBio }, {
+      onSuccess: () => setEditing(false),
+    });
+  };
+
+  const stats = [
+    { label: "Posts", value: userPosts.length, icon: MessageCircle, color: "text-primary", bg: "bg-primary/10" },
+    { label: "Karma", value: profile?.karma || 0, icon: Star, color: "text-accent", bg: "bg-accent/10" },
+    { label: "Total Likes", value: userPosts.reduce((s, p) => s + p.likes_count, 0), icon: Heart, color: "text-primary", bg: "bg-primary/10" },
+    { label: "Comments", value: userPosts.reduce((s, p) => s + p.comments_count, 0), icon: MessageCircle, color: "text-success", bg: "bg-success/10" },
+  ];
 
   return (
     <AppLayout>
@@ -40,9 +68,6 @@ export default function ProfilePage() {
           {/* Cover */}
           <div className="h-32 sm:h-40 bg-gradient-to-br from-primary/20 via-primary/10 to-accent/10 relative">
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiMyNTYzRUIiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIvPjwvZz48L2c+PC9zdmc+')] opacity-50" />
-            <button className="absolute top-3 right-3 h-8 w-8 rounded-full bg-card/80 backdrop-blur flex items-center justify-center hover:bg-card transition-colors">
-              <Camera className="h-4 w-4 text-muted-foreground" />
-            </button>
           </div>
 
           {/* Profile Info */}
@@ -50,46 +75,59 @@ export default function ProfilePage() {
             <div className="flex flex-col sm:flex-row sm:items-end gap-4">
               {/* Avatar */}
               <div className="relative shrink-0">
-                <img src={currentUser.avatar} alt={currentUser.name}
-                  className="h-24 w-24 sm:h-28 sm:w-28 rounded-2xl bg-muted border-4 border-card shadow-lg" />
-                {currentUser.isPro && (
+                <img src={profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`} alt={profile?.display_name || 'User'}
+                  className="h-24 w-24 sm:h-28 sm:w-28 rounded-2xl bg-muted border-4 border-card shadow-lg object-cover" />
+                {profile?.is_pro && (
                   <span className="absolute -bottom-1 -right-1 h-8 w-8 rounded-xl bg-accent flex items-center justify-center border-2 border-card shadow-sm">
                     <Crown className="h-4 w-4 text-accent-foreground" />
                   </span>
                 )}
-                <button className="absolute bottom-1 left-1 h-7 w-7 rounded-lg bg-card/90 backdrop-blur flex items-center justify-center">
-                  <Camera className="h-3.5 w-3.5 text-muted-foreground" />
-                </button>
               </div>
 
               {/* Name & Info */}
               <div className="flex-1 min-w-0 pt-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="font-display font-bold text-xl sm:text-2xl text-foreground">{currentUser.name}</h1>
-                  {currentUser.verified && (
-                    <div className="flex items-center gap-1 text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                      <Shield className="h-3 w-3" /> Verified
+                {editing ? (
+                  <div className="space-y-2">
+                    <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Display name" className="h-9 text-sm rounded-xl" />
+                    <Input value={editBio} onChange={(e) => setEditBio(e.target.value)} placeholder="Bio" className="h-9 text-sm rounded-xl" />
+                    <div className="flex gap-2">
+                      <button onClick={saveEdit} disabled={updateProfile.isPending} className="px-4 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold">
+                        {updateProfile.isPending ? 'Saving...' : 'Save'}
+                      </button>
+                      <button onClick={() => setEditing(false)} className="px-4 py-1.5 rounded-xl border border-border text-xs font-medium">Cancel</button>
                     </div>
-                  )}
-                  {currentUser.isPro && <span className="pro-badge"><Crown className="h-3 w-3" /> PRO</span>}
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">{currentUser.bio}</p>
-                <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
-                  <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> Downtown, NYC</span>
-                  <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> Joined Jan 2024</span>
-                  <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3 text-success" /> Top 5% helper</span>
-                </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h1 className="font-display font-bold text-xl sm:text-2xl text-foreground">{profile?.display_name || 'User'}</h1>
+                      {profile?.verified && (
+                        <div className="flex items-center gap-1 text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                          <Shield className="h-3 w-3" /> Verified
+                        </div>
+                      )}
+                      {profile?.is_pro && <span className="pro-badge"><Crown className="h-3 w-3" /> PRO</span>}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">{profile?.bio || 'No bio yet'}</p>
+                    <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
+                      <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {profile?.privacy_level === 'exact' ? 'Location shared' : 'Location blurred'}</span>
+                      <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> Joined {new Date(profile?.created_at || '').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Action buttons */}
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="karma-badge text-sm">
-                  <Star className="h-4 w-4 fill-karma" /> {currentUser.karma}
+              {!editing && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="karma-badge text-sm">
+                    <Star className="h-4 w-4 fill-karma" /> {profile?.karma || 0}
+                  </div>
+                  <button onClick={startEdit} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors">
+                    <Edit3 className="h-3.5 w-3.5" /> Edit
+                  </button>
                 </div>
-                <button className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors">
-                  <Edit3 className="h-3.5 w-3.5" /> Edit
-                </button>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -135,43 +173,19 @@ export default function ProfilePage() {
                       <h4 className="text-sm font-semibold text-foreground">{post.title}</h4>
                       <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{post.description}</p>
                       <div className="flex items-center gap-3 mt-1.5">
-                        <span className="text-[10px] text-muted-foreground">{post.createdAt}</span>
-                        <span className="text-[10px] text-muted-foreground">{post.likes} likes</span>
-                        <span className="text-[10px] text-muted-foreground">{post.comments.length} comments</span>
+                        <span className="text-[10px] text-muted-foreground">{getTimeAgo(post.created_at)}</span>
+                        <span className="text-[10px] text-muted-foreground">{post.likes_count} likes</span>
+                        <span className="text-[10px] text-muted-foreground">{post.comments_count} comments</span>
                       </div>
                     </div>
                     {post.status === "fulfilled" && <span className="help-tag bg-success/10 text-success text-[10px]">✓ Done</span>}
                   </div>
-                )) : <p className="text-center text-muted-foreground py-8">No posts yet</p>}
-              </div>
-            )}
-
-            {/* Helped Tab */}
-            {activeTab === 1 && (
-              <div className="space-y-2">
-                {helpHistory.map((item, i) => (
-                  <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
-                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors">
-                    <div className="h-9 w-9 rounded-xl bg-success/10 flex items-center justify-center shrink-0">
-                      <HandHelping className="h-4 w-4 text-success" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground">{item.text}</p>
-                      <span className="text-xs text-muted-foreground">{item.time}</span>
-                    </div>
-                    <motion.span whileHover={{ scale: 1.1 }} className="karma-badge text-xs shrink-0">
-                      <Star className="h-3 w-3 fill-karma" />+{item.karma}
-                    </motion.span>
-                  </motion.div>
-                ))}
-                <div className="text-center pt-2">
-                  <span className="text-sm font-display font-bold text-accent">Total: +70 Karma earned helping others!</span>
-                </div>
+                )) : <p className="text-center text-muted-foreground py-8">No posts yet. Share something with your neighbors!</p>}
               </div>
             )}
 
             {/* Badges Tab */}
-            {activeTab === 2 && (
+            {activeTab === 1 && (
               <div className="grid grid-cols-2 gap-3">
                 {badges.map((badge, i) => (
                   <motion.div key={badge.label} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.08 }}
@@ -185,39 +199,23 @@ export default function ProfilePage() {
             )}
 
             {/* About Tab */}
-            {activeTab === 3 && (
+            {activeTab === 2 && (
               <div className="space-y-5">
                 <div>
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">About</h4>
                   <p className="text-sm text-foreground leading-relaxed">
-                    {currentUser.bio} I love being part of this community and helping out whenever I can. Originally from San Francisco, now loving life in NYC. 
-                    Always up for a coffee chat or lending a hand with anything!
+                    {profile?.bio || 'No bio yet. Click "Edit" to add one!'}
                   </p>
                 </div>
                 <div>
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Skills & Expertise</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {["Cooking 🍳", "Dog Walking 🐕", "Handyman 🔧", "Tech Support 💻", "Gardening 🌱", "Photography 📷", "Moving Help 📦"].map(s => (
-                      <span key={s} className="px-3 py-1.5 rounded-xl bg-muted text-sm font-medium text-foreground">{s}</span>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Availability</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    {["Mon-Fri: After 5pm", "Weekends: Anytime", "Emergencies: Always", "Holidays: Flexible"].map(a => (
-                      <div key={a} className="flex items-center gap-2 text-sm text-foreground">
-                        <div className="h-1.5 w-1.5 rounded-full bg-success" /> {a}
-                      </div>
-                    ))}
-                  </div>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Email</h4>
+                  <p className="text-sm text-foreground">{profile?.email || user?.email || 'Not set'}</p>
                 </div>
                 <div>
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Trust & Safety</h4>
                   <div className="flex flex-wrap gap-3">
-                    <span className="flex items-center gap-1.5 text-sm text-foreground"><Shield className="h-4 w-4 text-primary" /> Identity Verified</span>
-                    <span className="flex items-center gap-1.5 text-sm text-foreground"><Award className="h-4 w-4 text-accent" /> Background Checked</span>
-                    <span className="flex items-center gap-1.5 text-sm text-foreground"><Star className="h-4 w-4 text-karma fill-karma" /> 4.9 Rating</span>
+                    {profile?.verified && <span className="flex items-center gap-1.5 text-sm text-foreground"><Shield className="h-4 w-4 text-primary" /> Identity Verified</span>}
+                    <span className="flex items-center gap-1.5 text-sm text-foreground"><Star className="h-4 w-4 text-karma fill-karma" /> {profile?.karma || 0} Karma</span>
                   </div>
                 </div>
               </div>
