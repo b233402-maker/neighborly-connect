@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useToggleLike, useComments, useCreateComment, useToggleCommentLike, type PostWithAuthor, type CommentWithAuthor } from "@/hooks/usePosts";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
+import { useNavigate } from "react-router-dom";
 
 const categoryStyles: Record<string, string> = {
   borrow: "bg-primary/10 text-primary",
