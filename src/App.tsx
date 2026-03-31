@@ -7,7 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useRealtimeSubscriptions } from "@/hooks/useRealtime";
 import { useOnlinePresence } from "@/hooks/usePresence";
-import { Loader2 } from "lucide-react";
+import { LayoutSkeleton } from "@/components/skeletons/LayoutSkeleton";
 
 // Eagerly load the auth page (landing page — critical for LCP)
 import AuthPage from "./pages/AuthPage";
@@ -37,11 +37,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <LayoutSkeleton />;
   }
 
   if (!isAuthenticated) return <Navigate to="/auth" replace />;
@@ -54,11 +50,7 @@ const RealtimeProvider = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const LazyFallback = () => (
-  <div className="min-h-screen bg-background flex items-center justify-center">
-    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-  </div>
-);
+const LazyFallback = () => <LayoutSkeleton />;
 
 const AppRoutes = () => (
   <Suspense fallback={<LazyFallback />}>
