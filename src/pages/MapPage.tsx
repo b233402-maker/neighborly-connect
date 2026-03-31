@@ -108,7 +108,8 @@ export default function MapPage() {
       location.lat, location.lng,
       nearbyUsers,
       radius[0],
-      user?.id
+      user?.id,
+      friendIds
     );
 
     visibleUsers.forEach((u) => {
