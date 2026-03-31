@@ -229,7 +229,7 @@ function ChatView({ activeConvo, selectedChat, onBack }: { activeConvo: any; sel
   const isSending = uploadAttachment.isPending || sendMessage.isPending;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-12rem)] lg:h-[calc(100vh-5rem)] bg-card rounded-2xl border border-border overflow-hidden">
+    <div className="flex flex-col h-[calc(100dvh-7rem)] lg:h-[calc(100vh-5rem)] bg-card rounded-2xl border border-border overflow-hidden">
       <ChatHeader activeConvo={activeConvo} onBack={onBack} />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-background/50">
