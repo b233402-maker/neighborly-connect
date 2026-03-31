@@ -44,6 +44,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const RealtimeProvider = ({ children }: { children: React.ReactNode }) => {
   useRealtimeSubscriptions();
+  useOnlinePresence();
   return <>{children}</>;
 };
 
