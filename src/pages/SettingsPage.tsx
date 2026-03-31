@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Bell, Shield, MapPin, Eye, Crown, LogOut, ChevronRight, ToggleLeft, ToggleRight, Palette, Globe, Lock, Smartphone, HelpCircle, FileText, Camera, Mail, Loader2 } from "lucide-react";
+import { User, Bell, Shield, MapPin, Eye, Crown, LogOut, ChevronRight, ToggleLeft, ToggleRight, Palette, Globe, Lock, Smartphone, HelpCircle, FileText, Camera, Mail, Loader2, CreditCard, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUpdateProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
+import { UpgradeModal } from "@/components/upgrade/UpgradeModal";
 
 interface SettingToggle { label: string; description: string; key: string; }
 
