@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
+
 
 export function useFollowStatus(targetUserId: string | undefined) {
   const { user } = useAuth();
@@ -89,14 +89,10 @@ export function useToggleFollow() {
         if (error) throw error;
       }
     },
-    onSuccess: (_, { targetUserId, isFollowing }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['follow-status'] });
       queryClient.invalidateQueries({ queryKey: ['follow-counts'] });
       queryClient.invalidateQueries({ queryKey: ['friends'] });
-      toast.success(isFollowing ? 'Unfollowed' : 'Following!');
-    },
-    onError: () => {
-      toast.error('Failed to update follow status');
     },
   });
 }
