@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Heart, MessageCircle, Share2, HandHelping, Send, MoreHorizontal, CornerDownRight, Check, Loader2 } from "lucide-react";
+import { Heart, MessageCircle, Share2, HandHelping, Send, MoreHorizontal, CornerDownRight, Check, Loader2, X, UserCheck, Star } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToggleLike, useComments, useCreateComment, useToggleCommentLike, type PostWithAuthor, type CommentWithAuthor } from "@/hooks/usePosts";
-import { useHasOfferedHelp, useOfferHelp } from "@/hooks/useHelpOffers";
+import { useHasOfferedHelp, useOfferHelp, usePostHelpOffers, useRespondHelpOffer } from "@/hooks/useHelpOffers";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
