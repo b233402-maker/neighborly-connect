@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Star, Shield, Crown, MapPin, Calendar, Edit3, Camera, Users, HandHelping, Heart, MessageCircle, Award, TrendingUp } from "lucide-react";
+import { Star, Shield, Crown, MapPin, Calendar, Edit3, Camera, Users, HandHelping, Heart, MessageCircle, Award, TrendingUp, UserCheck } from "lucide-react";
 import { motion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePosts } from "@/hooks/usePosts";
 import { useUpdateProfile } from "@/hooks/useProfile";
+import { useFollowCounts } from "@/hooks/useFollows";
+import { FollowListDialog } from "@/components/social/FollowListDialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
