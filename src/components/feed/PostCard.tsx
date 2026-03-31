@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useToggleLike, useComments, useCreateComment, useToggleCommentLike, type PostWithAuthor, type CommentWithAuthor } from "@/hooks/usePosts";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
+import { useNavigate } from "react-router-dom";
 
 const categoryStyles: Record<string, string> = {
   borrow: "bg-primary/10 text-primary",
@@ -118,6 +119,7 @@ function CommentItem({
 
 export function PostCard({ post }: { post: PostWithAuthor }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [shared, setShared] = useState(false);
@@ -149,16 +151,24 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
     toast.success("Thanks! The poster will be notified.");
   };
 
+  const goToProfile = () => {
+    if (post.author_id === user?.id) {
+      navigate("/profile");
+    } else {
+      navigate(`/user/${post.author_id}`);
+    }
+  };
+
   const author = post.author;
   const timeAgo = getTimeAgo(post.created_at);
 
   return (
     <div className="feed-card">
       <div className="flex items-start gap-3 mb-3">
-        <img src={author?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.author_id}`} alt="" className="h-10 w-10 rounded-xl bg-muted flex-shrink-0" />
+        <img onClick={goToProfile} src={author?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.author_id}`} alt="" className="h-10 w-10 rounded-xl bg-muted flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-display font-semibold text-sm text-foreground">{author?.display_name || 'User'}</span>
+            <span onClick={goToProfile} className="font-display font-semibold text-sm text-foreground cursor-pointer hover:text-primary transition-colors">{author?.display_name || 'User'}</span>
             {author?.verified && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-success/10 text-success font-medium">✓</span>}
             <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${categoryStyles[post.category] || categoryStyles.service}`}>{post.category}</span>
           </div>
