@@ -102,7 +102,8 @@ export function MiniMap() {
       location.lat, location.lng,
       posts.map(p => ({ ...p, privacy_level: p.author?.privacy_level || 'public', user_id: p.author_id })),
       radius[0],
-      user?.id
+      user?.id,
+      friendIds
     );
 
     visiblePosts.forEach((post) => {
