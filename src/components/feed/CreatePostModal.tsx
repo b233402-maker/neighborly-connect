@@ -61,7 +61,7 @@ export function CreatePostModal({ open, onClose }: CreatePostModalProps) {
         setDetectingLocation(false);
         
       },
-      () => { setDetectingLocation(false); toast.error("Could not get location"); },
+      () => { setDetectingLocation(false); },
       { timeout: 10000 }
     );
   };
