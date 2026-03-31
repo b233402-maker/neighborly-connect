@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { PostCard } from "./PostCard";
 import { CreatePostModal } from "./CreatePostModal";
+import { PullToRefresh } from "./PullToRefresh";
 import { usePosts, flattenPostPages } from "@/hooks/usePosts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFeedStore } from "@/stores/feedStore";
