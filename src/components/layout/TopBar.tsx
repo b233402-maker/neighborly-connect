@@ -23,16 +23,18 @@ interface SearchResult {
 }
 
 export function TopBar() {
-  const { profile, user } = useAuth();
+  const { profile, user, logout } = useAuth();
   const navigate = useNavigate();
   const updateProfile = useUpdateProfile();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
   const currentVisibility = profile?.privacy_level || "blurred";
   const currentOption = visibilityOptions.find(o => o.id === currentVisibility) || visibilityOptions[2];
 
