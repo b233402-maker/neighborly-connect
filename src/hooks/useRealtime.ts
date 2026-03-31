@@ -27,6 +27,11 @@ export function useRealtimeSubscriptions() {
         queryClient.invalidateQueries({ queryKey: ['messages'] });
         queryClient.invalidateQueries({ queryKey: ['conversations'] });
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'follows' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['follow-status'] });
+        queryClient.invalidateQueries({ queryKey: ['follow-counts'] });
+        queryClient.invalidateQueries({ queryKey: ['friends'] });
+      })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, () => {
         queryClient.invalidateQueries({ queryKey: ['notifications'] });
         queryClient.invalidateQueries({ queryKey: ['unread-count'] });
