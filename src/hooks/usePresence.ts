@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { AuthContext } from '@/contexts/AuthContext';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 interface PresenceState {
@@ -17,7 +17,8 @@ function notifyListeners() {
 }
 
 export function useOnlinePresence() {
-  const { user } = useAuth();
+  const auth = useContext(AuthContext);
+  const user = auth?.user ?? null;
 
   useEffect(() => {
     if (!user || globalChannel) return;
@@ -80,7 +81,8 @@ export function useOnlineUsers(): Set<string> {
 
 // Typing indicator via broadcast
 export function useTypingIndicator(conversationId: string | null) {
-  const { user } = useAuth();
+  const auth = useContext(AuthContext);
+  const user = auth?.user ?? null;
   const [typingUserId, setTypingUserId] = useState<string | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
