@@ -4,6 +4,7 @@ import { Star, Shield, Crown, MapPin, Calendar, MessageCircle, Heart, HandHelpin
 import { FollowListDialog } from "@/components/social/FollowListDialog";
 import { motion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { ProfileSkeleton } from "@/components/skeletons/ProfileSkeleton";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
