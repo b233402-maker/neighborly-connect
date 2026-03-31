@@ -109,10 +109,6 @@ export function FeedColumn() {
         </div>
       </PullToRefresh>
 
-      {/* Desktop: render without pull-to-refresh wrapper */}
-      <div className="hidden lg:block">
-        {/* Already handled by PullToRefresh which hides on lg+ */}
-      </div>
 
       <CreatePostModal open={showCreate} onClose={() => setShowCreate(false)} onPost={() => {}} />
     </>
