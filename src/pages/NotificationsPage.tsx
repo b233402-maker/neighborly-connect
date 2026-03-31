@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { HandHelping, MessageCircle, Heart, Star, Bell, Check } from "lucide-react";
+import { HandHelping, MessageCircle, Heart, Star, Bell, Check, MapPin } from "lucide-react";
 import { motion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useNotifications, useMarkNotificationsRead, type NotificationItem } from "@/hooks/useNotifications";
