@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Star, Shield, Crown, MapPin, Calendar, MessageCircle, Heart, HandHelping, Send } from "lucide-react";
+import { Star, Shield, Crown, MapPin, Calendar, MessageCircle, Heart, HandHelping, Send, UserPlus, UserCheck, Users } from "lucide-react";
 import { motion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCreateConversation } from "@/hooks/useMessages";
 import { useIsUserOnline } from "@/hooks/usePresence";
+import { useFollowStatus, useFollowCounts, useToggleFollow } from "@/hooks/useFollows";
 import { toast } from "sonner";
 
 function getTimeAgo(dateStr: string): string {
