@@ -34,77 +34,88 @@ export interface PostWithAuthor {
 
 const POSTS_PAGE_SIZE = 30;
 
+async function fetchPostsPage(
+  filter: string | undefined,
+  userId: string | undefined,
+  pageParam: number
+): Promise<{ posts: PostWithAuthor[]; nextCursor: number | null }> {
+  const from = pageParam * POSTS_PAGE_SIZE;
+  const to = from + POSTS_PAGE_SIZE - 1;
+
+  let query = supabase
+    .from('posts')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (filter === 'urgent') {
+    query = query.eq('category', 'urgent');
+  } else if (filter === 'offering') {
+    query = query.eq('type', 'offer');
+  }
+
+  const { data: posts, error } = await query;
+  if (error) throw error;
+  if (!posts?.length) return { posts: [], nextCursor: null };
+
+  const authorIds = [...new Set(posts.map((p) => p.author_id))];
+  const postIds = posts.map((p) => p.id);
+
+  const [profilesRes, likesRes, ...commentCountResults] = await Promise.all([
+    supabase
+      .from('profiles_public')
+      .select('user_id, display_name, avatar_url, karma, verified, is_pro, privacy_level')
+      .in('user_id', authorIds),
+    userId
+      ? supabase
+          .from('likes')
+          .select('post_id')
+          .eq('user_id', userId)
+          .in('post_id', postIds)
+      : Promise.resolve({ data: [] as { post_id: string }[] }),
+    ...postIds.map((pid) =>
+      supabase
+        .from('comments')
+        .select('*', { count: 'exact', head: true })
+        .eq('post_id', pid)
+    ),
+  ]);
+
+  const profileMap: Record<string, PostAuthor> = {};
+  (profilesRes.data || []).forEach((p) => {
+    profileMap[p.user_id] = p;
+  });
+
+  const commentCounts: Record<string, number> = {};
+  postIds.forEach((pid, i) => {
+    commentCounts[pid] = commentCountResults[i]?.count || 0;
+  });
+
+  const likedPostIds = new Set(
+    ((likesRes as any).data || []).map((l: any) => l.post_id)
+  );
+
+  const enrichedPosts = posts.map((post) => ({
+    ...post,
+    author: profileMap[post.author_id] || null,
+    comments_count: commentCounts[post.id] || 0,
+    user_has_liked: likedPostIds.has(post.id),
+  })) as PostWithAuthor[];
+
+  return {
+    posts: enrichedPosts,
+    nextCursor: posts.length === POSTS_PAGE_SIZE ? pageParam + 1 : null,
+  };
+}
+
 export function usePosts(filter?: string) {
   const { user } = useAuth();
 
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ['posts', filter],
-    queryFn: async () => {
-      // Fetch posts with pagination
-      let query = supabase
-        .from('posts')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(POSTS_PAGE_SIZE);
-
-      if (filter === 'urgent') {
-        query = query.eq('category', 'urgent');
-      } else if (filter === 'offering') {
-        query = query.eq('type', 'offer');
-      }
-
-      const { data: posts, error } = await query;
-      if (error) throw error;
-      if (!posts?.length) return [] as PostWithAuthor[];
-
-      // Get unique author IDs
-      const authorIds = [...new Set(posts.map((p) => p.author_id))];
-      const postIds = posts.map((p) => p.id);
-
-      // Fetch profiles, comments count (head-only), and likes in parallel
-      const [profilesRes, likesRes, ...commentCountResults] = await Promise.all([
-        supabase
-          .from('profiles_public')
-          .select('user_id, display_name, avatar_url, karma, verified, is_pro, privacy_level')
-          .in('user_id', authorIds),
-        user
-          ? supabase
-              .from('likes')
-              .select('post_id')
-              .eq('user_id', user.id)
-              .in('post_id', postIds)
-          : Promise.resolve({ data: [] as { post_id: string }[] }),
-        // Individual count queries per post (head:true = no data transfer)
-        ...postIds.map((pid) =>
-          supabase
-            .from('comments')
-            .select('*', { count: 'exact', head: true })
-            .eq('post_id', pid)
-        ),
-      ]);
-
-      // Build lookup maps
-      const profileMap: Record<string, PostAuthor> = {};
-      (profilesRes.data || []).forEach((p) => {
-        profileMap[p.user_id] = p;
-      });
-
-      const commentCounts: Record<string, number> = {};
-      postIds.forEach((pid, i) => {
-        commentCounts[pid] = commentCountResults[i]?.count || 0;
-      });
-
-      const likedPostIds = new Set(
-        ((likesRes as any).data || []).map((l: any) => l.post_id)
-      );
-
-      return posts.map((post) => ({
-        ...post,
-        author: profileMap[post.author_id] || null,
-        comments_count: commentCounts[post.id] || 0,
-        user_has_liked: likedPostIds.has(post.id),
-      })) as PostWithAuthor[];
-    },
+    queryFn: ({ pageParam }) => fetchPostsPage(filter, user?.id, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
     staleTime: 30_000,
   });
 }
