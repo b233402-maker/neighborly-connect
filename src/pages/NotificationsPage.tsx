@@ -29,10 +29,10 @@ const bgMap: Record<string, string> = {
   help: "bg-success/10", comment: "bg-primary/10", like: "bg-primary/10", karma: "bg-karma/10", nearby_post: "bg-accent/20", system: "bg-muted",
 };
 
-const filterTabs = ["All", "Help", "Comments", "Likes", "Karma"];
+const filterTabs = ["All", "Help", "Comments", "Likes", "Nearby", "Karma"];
 const filterMap: Record<string, string[]> = {
-  All: ["help", "comment", "like", "karma", "system"],
-  Help: ["help"], Comments: ["comment"], Likes: ["like"], Karma: ["karma"],
+  All: ["help", "comment", "like", "karma", "nearby_post", "system"],
+  Help: ["help"], Comments: ["comment"], Likes: ["like"], Nearby: ["nearby_post"], Karma: ["karma"],
 };
 
 export default function NotificationsPage() {
