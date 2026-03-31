@@ -9,8 +9,6 @@ const tabs = [
   { label: "Post", icon: Plus, path: "/__post__", isAction: true },
   { label: "Messages", icon: MessageSquare, path: "/messages" },
   { label: "Alerts", icon: Bell, path: "/notifications" },
-  { label: "Profile", icon: User, path: "/profile" },
-  { label: "Settings", icon: Settings, path: "/settings" },
 ];
 
 export function MobileNav({ onCreatePost }: { onCreatePost?: () => void }) {
