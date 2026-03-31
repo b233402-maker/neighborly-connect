@@ -79,7 +79,7 @@ export function CreatePostModal({ open, onClose }: CreatePostModalProps) {
     const ext = imageFile.name.split(".").pop();
     const path = `${user.id}/${Date.now()}.${ext}`;
     const { error } = await supabase.storage.from("post-images").upload(path, imageFile);
-    if (error) { toast.error("Image upload failed"); return null; }
+    if (error) { return null; }
     const { data } = supabase.storage.from("post-images").getPublicUrl(path);
     return data.publicUrl;
   };
