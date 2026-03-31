@@ -6,6 +6,7 @@ import { useToggleLike, useComments, useCreateComment, useToggleCommentLike, typ
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
+import { PostLikesDialog } from "@/components/social/PostLikesDialog";
 
 const categoryStyles: Record<string, string> = {
   borrow: "bg-primary/10 text-primary",
