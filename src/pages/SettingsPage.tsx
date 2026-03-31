@@ -51,6 +51,8 @@ export default function SettingsPage() {
   const { logout, profile, user } = useAuth();
   const updateProfile = useUpdateProfile();
   const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [managingPortal, setManagingPortal] = useState(false);
 
   // Profile edit state
   const [editName, setEditName] = useState(profile?.display_name || "");
