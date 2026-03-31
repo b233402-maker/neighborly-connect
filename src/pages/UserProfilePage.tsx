@@ -83,6 +83,7 @@ export default function UserProfilePage() {
   const { data: profile, isLoading } = useUserProfile(userId || "");
   const { data: posts } = useUserPosts(userId || "");
   const { startChat, isPending: chatPending } = useStartConversation();
+  const isOnline = useIsUserOnline(userId);
 
   const isOwnProfile = user?.id === userId;
 
