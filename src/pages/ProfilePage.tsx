@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Star, Shield, Crown, MapPin, Calendar, Edit3, Camera, Users, HandHelping, Heart, MessageCircle, Award, TrendingUp } from "lucide-react";
+import { Star, Shield, Crown, MapPin, Calendar, Edit3, Camera, Users, HandHelping, Heart, MessageCircle, Award, TrendingUp, UserCheck } from "lucide-react";
 import { motion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePosts } from "@/hooks/usePosts";
 import { useUpdateProfile } from "@/hooks/useProfile";
+import { useFollowCounts } from "@/hooks/useFollows";
+import { FollowListDialog } from "@/components/social/FollowListDialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
@@ -36,6 +38,9 @@ export default function ProfilePage() {
   const [editName, setEditName] = useState('');
   const [editBio, setEditBio] = useState('');
   const updateProfile = useUpdateProfile();
+  const { data: followCounts } = useFollowCounts(user?.id);
+  const [followListOpen, setFollowListOpen] = useState(false);
+  const [followListTab, setFollowListTab] = useState<"followers" | "following">("followers");
 
   // Fetch user's own posts
   const { data: allPosts } = usePosts();
@@ -55,9 +60,9 @@ export default function ProfilePage() {
 
   const stats = [
     { label: "Posts", value: userPosts.length, icon: MessageCircle, color: "text-primary", bg: "bg-primary/10" },
-    { label: "Karma", value: profile?.karma || 0, icon: Star, color: "text-accent", bg: "bg-accent/10" },
-    { label: "Total Likes", value: userPosts.reduce((s, p) => s + p.likes_count, 0), icon: Heart, color: "text-primary", bg: "bg-primary/10" },
-    { label: "Comments", value: userPosts.reduce((s, p) => s + p.comments_count, 0), icon: MessageCircle, color: "text-success", bg: "bg-success/10" },
+    { label: "Followers", value: followCounts?.followers || 0, icon: Users, color: "text-accent", bg: "bg-accent/10", clickable: true },
+    { label: "Following", value: followCounts?.following || 0, icon: UserCheck, color: "text-success", bg: "bg-success/10", clickable: true },
+    { label: "Karma", value: profile?.karma || 0, icon: Star, color: "text-karma", bg: "bg-karma/10" },
   ];
 
   return (
@@ -136,7 +141,12 @@ export default function ProfilePage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {stats.map((stat, i) => (
             <motion.div key={stat.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-              className="bg-card rounded-2xl border border-border p-4 text-center hover:shadow-md transition-shadow">
+              className={`bg-card rounded-2xl border border-border p-4 text-center hover:shadow-md transition-shadow ${stat.clickable ? "cursor-pointer" : ""}`}
+              onClick={() => {
+                if (stat.label === "Followers") { setFollowListTab("followers"); setFollowListOpen(true); }
+                if (stat.label === "Following") { setFollowListTab("following"); setFollowListOpen(true); }
+              }}
+            >
               <div className={`h-10 w-10 rounded-xl ${stat.bg} flex items-center justify-center mx-auto mb-2`}>
                 <stat.icon className={`h-5 w-5 ${stat.color}`} />
               </div>
@@ -222,6 +232,14 @@ export default function ProfilePage() {
             )}
           </div>
         </div>
+        {user && (
+          <FollowListDialog
+            open={followListOpen}
+            onOpenChange={setFollowListOpen}
+            userId={user.id}
+            initialTab={followListTab}
+          />
+        )}
       </div>
     </AppLayout>
   );

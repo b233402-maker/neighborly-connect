@@ -6,6 +6,7 @@ import { useToggleLike, useComments, useCreateComment, useToggleCommentLike, typ
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
+import { PostLikesDialog } from "@/components/social/PostLikesDialog";
 
 const categoryStyles: Record<string, string> = {
   borrow: "bg-primary/10 text-primary",
@@ -124,6 +125,7 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
   const [commentText, setCommentText] = useState("");
   const [shared, setShared] = useState(false);
   const [helped, setHelped] = useState(false);
+  const [likesDialogOpen, setLikesDialogOpen] = useState(false);
 
   const toggleLike = useToggleLike();
   const { data: comments } = useComments(showComments ? post.id : '');
@@ -189,7 +191,9 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
       )}
 
       <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3 pt-2 border-t border-border/50">
-        <span>{post.likes_count} likes</span>
+        <button onClick={() => setLikesDialogOpen(true)} className="hover:text-foreground hover:underline transition-colors cursor-pointer">
+          {post.likes_count} likes
+        </button>
         <span>{post.comments_count} comments</span>
       </div>
 
@@ -227,6 +231,7 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
           </motion.div>
         )}
       </AnimatePresence>
+      <PostLikesDialog open={likesDialogOpen} onOpenChange={setLikesDialogOpen} postId={post.id} likesCount={post.likes_count} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Star, Shield, Crown, MapPin, Calendar, MessageCircle, Heart, HandHelping, Send, UserPlus, UserCheck, Users } from "lucide-react";
+import { FollowListDialog } from "@/components/social/FollowListDialog";
 import { motion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -89,6 +90,8 @@ export default function UserProfilePage() {
   const { data: followCounts } = useFollowCounts(userId);
   const toggleFollow = useToggleFollow();
 
+  const [followListOpen, setFollowListOpen] = useState(false);
+  const [followListTab, setFollowListTab] = useState<"followers" | "following">("followers");
   const isOwnProfile = user?.id === userId;
 
   if (isOwnProfile) {
@@ -210,7 +213,14 @@ export default function UserProfilePage() {
         <div className="grid grid-cols-4 gap-3">
           {stats.map((stat, i) => (
             <motion.div key={stat.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-              className="bg-card rounded-2xl border border-border p-4 text-center hover:shadow-md transition-shadow">
+              className={`bg-card rounded-2xl border border-border p-4 text-center hover:shadow-md transition-shadow ${
+                (stat.label === "Followers" || stat.label === "Following") ? "cursor-pointer" : ""
+              }`}
+              onClick={() => {
+                if (stat.label === "Followers") { setFollowListTab("followers"); setFollowListOpen(true); }
+                if (stat.label === "Following") { setFollowListTab("following"); setFollowListOpen(true); }
+              }}
+            >
               <div className={`h-10 w-10 rounded-xl ${stat.bg} flex items-center justify-center mx-auto mb-2`}>
                 <stat.icon className={`h-5 w-5 ${stat.color}`} />
               </div>
@@ -246,6 +256,14 @@ export default function UserProfilePage() {
             )}
           </div>
         </div>
+        {userId && (
+          <FollowListDialog
+            open={followListOpen}
+            onOpenChange={setFollowListOpen}
+            userId={userId}
+            initialTab={followListTab}
+          />
+        )}
       </div>
     </AppLayout>
   );
