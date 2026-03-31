@@ -117,6 +117,7 @@ export function useCreatePost() {
       tags: string[];
       lat?: number;
       lng?: number;
+      image_url?: string | null;
     }) => {
       if (!user) throw new Error('Not authenticated');
       const { data, error } = await supabase
@@ -130,6 +131,7 @@ export function useCreatePost() {
           tags: post.tags,
           lat: post.lat || 40.7128,
           lng: post.lng || -74.006,
+          image_url: post.image_url || null,
         })
         .select()
         .single();
