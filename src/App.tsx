@@ -7,7 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useRealtimeSubscriptions } from "@/hooks/useRealtime";
 import { useOnlinePresence } from "@/hooks/usePresence";
-import { Loader2 } from "lucide-react";
+import { LayoutSkeleton } from "@/components/skeletons/LayoutSkeleton";
 
 // Eagerly load the auth page (landing page — critical for LCP)
 import AuthPage from "./pages/AuthPage";
