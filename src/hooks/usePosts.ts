@@ -166,7 +166,27 @@ export function useToggleLike() {
         if (error) throw error;
       }
     },
-    onSuccess: () => {
+    onMutate: async ({ postId, hasLiked }) => {
+      await queryClient.cancelQueries({ queryKey: ['posts'] });
+      const previousPosts = queryClient.getQueriesData({ queryKey: ['posts'] });
+
+      queryClient.setQueriesData({ queryKey: ['posts'] }, (old: any) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((p: PostWithAuthor) =>
+          p.id === postId
+            ? { ...p, user_has_liked: !hasLiked, likes_count: p.likes_count + (hasLiked ? -1 : 1) }
+            : p
+        );
+      });
+
+      return { previousPosts };
+    },
+    onError: (_err, _vars, context) => {
+      context?.previousPosts?.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data);
+      });
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
     },
   });
