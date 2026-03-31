@@ -85,7 +85,7 @@ export function CreatePostModal({ open, onClose }: CreatePostModalProps) {
   };
 
   const handleSubmit = async () => {
-    if (!title.trim()) { toast.error("Please add a title"); return; }
+    if (!title.trim()) { return; }
     setUploading(true);
     try {
       let imageUrl: string | null = null;
