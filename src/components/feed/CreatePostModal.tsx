@@ -59,7 +59,7 @@ export function CreatePostModal({ open, onClose }: CreatePostModalProps) {
         setCustomLng(pos.coords.longitude.toFixed(6));
         setUseCustomLocation(true);
         setDetectingLocation(false);
-        toast.success("Location detected!");
+        
       },
       () => { setDetectingLocation(false); toast.error("Could not get location"); },
       { timeout: 10000 }
