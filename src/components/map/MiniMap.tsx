@@ -29,9 +29,10 @@ function getTimeAgo(dateStr: string): string {
 }
 
 export function MiniMap() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const { location } = useUserLocation();
+  const isPro = profile?.is_pro || false;
   const [radius, setRadius] = useState([2]);
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
