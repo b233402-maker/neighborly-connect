@@ -41,6 +41,7 @@ export function MiniMap() {
 
   const { data: posts } = usePosts();
   const { data: nearbyUsers } = useNearbyUsers();
+  const { data: friendIds } = useFriendIds();
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
