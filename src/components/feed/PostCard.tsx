@@ -125,12 +125,16 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
   const [commentText, setCommentText] = useState("");
   const [shared, setShared] = useState(false);
   const [likesDialogOpen, setLikesDialogOpen] = useState(false);
+  const [showOffers, setShowOffers] = useState(false);
 
   const toggleLike = useToggleLike();
   const { data: comments } = useComments(showComments ? post.id : '');
   const createComment = useCreateComment();
-  const { data: hasOffered } = useHasOfferedHelp(post.type === "need" ? post.id : '');
+  const isOwnPost = post.author_id === user?.id;
+  const { data: hasOffered } = useHasOfferedHelp(post.type === "need" && !isOwnPost ? post.id : '');
   const offerHelp = useOfferHelp();
+  const { data: helpOffers } = usePostHelpOffers(isOwnPost && post.type === "need" && showOffers ? post.id : '');
+  const respondOffer = useRespondHelpOffer();
 
   const handleLike = () => {
     if (!user) return;
@@ -164,7 +168,6 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
 
   const author = post.author;
   const timeAgo = getTimeAgo(post.created_at);
-  const isOwnPost = post.author_id === user?.id;
 
   return (
     <div className="feed-card">
@@ -248,7 +251,99 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
             )}
           </motion.button>
         )}
+
+        {post.type === "need" && isOwnPost && (
+          <motion.button
+            onClick={() => setShowOffers(!showOffers)}
+            whileTap={{ scale: 0.9 }}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-colors ${
+              showOffers ? "text-accent bg-accent/10" : "text-accent hover:bg-accent/10"
+            }`}
+          >
+            <UserCheck className="h-4 w-4" /> Offers
+          </motion.button>
+        )}
       </div>
+
+      {/* Help Offers Panel (for post author) */}
+      <AnimatePresence>
+        {showOffers && isOwnPost && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+            <div className="pt-3 mt-3 border-t border-border/50">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <HandHelping className="h-3.5 w-3.5 text-accent" /> Help Offers
+                </h4>
+                <button onClick={() => setShowOffers(false)} className="text-muted-foreground hover:text-foreground">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              {!helpOffers?.length ? (
+                <p className="text-xs text-muted-foreground text-center py-4">No help offers yet. Hang tight!</p>
+              ) : (
+                <div className="space-y-2">
+                  {helpOffers.map((offer: any) => (
+                    <div key={offer.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-muted/50 hover:bg-muted transition-colors">
+                      <img
+                        src={offer.helper?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${offer.user_id}`}
+                        alt=""
+                        className="h-9 w-9 rounded-lg bg-muted flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary/30"
+                        onClick={() => navigate(`/user/${offer.user_id}`)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="text-xs font-semibold text-foreground cursor-pointer hover:text-primary"
+                            onClick={() => navigate(`/user/${offer.user_id}`)}
+                          >
+                            {offer.helper?.display_name || 'User'}
+                          </span>
+                          {offer.helper?.verified && <span className="text-[9px] px-1 py-0.5 rounded-full bg-success/10 text-success">✓</span>}
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                            <Star className="h-2.5 w-2.5 fill-current text-yellow-500" /> {offer.helper?.karma || 0}
+                          </span>
+                        </div>
+                        {offer.message && <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">{offer.message}</p>}
+                        <span className="text-[10px] text-muted-foreground">{getTimeAgo(offer.created_at)}</span>
+                      </div>
+
+                      {offer.status === 'pending' ? (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <motion.button
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => respondOffer.mutate({ offerId: offer.id, postId: post.id, action: 'accepted' })}
+                            disabled={respondOffer.isPending}
+                            className="h-7 px-2.5 rounded-lg bg-success/10 text-success text-[10px] font-semibold hover:bg-success/20 transition-colors flex items-center gap-1"
+                          >
+                            <Check className="h-3 w-3" /> Accept
+                          </motion.button>
+                          <motion.button
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => respondOffer.mutate({ offerId: offer.id, postId: post.id, action: 'rejected' })}
+                            disabled={respondOffer.isPending}
+                            className="h-7 px-2.5 rounded-lg bg-destructive/10 text-destructive text-[10px] font-semibold hover:bg-destructive/20 transition-colors flex items-center gap-1"
+                          >
+                            <X className="h-3 w-3" /> Decline
+                          </motion.button>
+                        </div>
+                      ) : (
+                        <span className={`text-[10px] font-semibold px-2 py-1 rounded-lg ${
+                          offer.status === 'accepted'
+                            ? 'bg-success/10 text-success'
+                            : 'bg-destructive/10 text-destructive'
+                        }`}>
+                          {offer.status === 'accepted' ? '✓ Accepted' : '✗ Declined'}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showComments && (
