@@ -32,17 +32,20 @@ export interface PostWithAuthor {
   user_has_liked: boolean;
 }
 
+const POSTS_PAGE_SIZE = 30;
+
 export function usePosts(filter?: string) {
   const { user } = useAuth();
 
   return useQuery({
     queryKey: ['posts', filter],
     queryFn: async () => {
-      // Fetch posts
+      // Fetch posts with pagination
       let query = supabase
         .from('posts')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(POSTS_PAGE_SIZE);
 
       if (filter === 'urgent') {
         query = query.eq('category', 'urgent');
@@ -58,16 +61,12 @@ export function usePosts(filter?: string) {
       const authorIds = [...new Set(posts.map((p) => p.author_id))];
       const postIds = posts.map((p) => p.id);
 
-      // Fetch profiles, comments count, and likes in parallel
-      const [profilesRes, commentsRes, likesRes] = await Promise.all([
+      // Fetch profiles, comments count (head-only), and likes in parallel
+      const [profilesRes, likesRes, ...commentCountResults] = await Promise.all([
         supabase
           .from('profiles_public')
           .select('user_id, display_name, avatar_url, karma, verified, is_pro, privacy_level')
           .in('user_id', authorIds),
-        supabase
-          .from('comments')
-          .select('post_id')
-          .in('post_id', postIds),
         user
           ? supabase
               .from('likes')
@@ -75,6 +74,13 @@ export function usePosts(filter?: string) {
               .eq('user_id', user.id)
               .in('post_id', postIds)
           : Promise.resolve({ data: [] as { post_id: string }[] }),
+        // Individual count queries per post (head:true = no data transfer)
+        ...postIds.map((pid) =>
+          supabase
+            .from('comments')
+            .select('*', { count: 'exact', head: true })
+            .eq('post_id', pid)
+        ),
       ]);
 
       // Build lookup maps
@@ -84,8 +90,8 @@ export function usePosts(filter?: string) {
       });
 
       const commentCounts: Record<string, number> = {};
-      (commentsRes.data || []).forEach((c) => {
-        commentCounts[c.post_id] = (commentCounts[c.post_id] || 0) + 1;
+      postIds.forEach((pid, i) => {
+        commentCounts[pid] = commentCountResults[i]?.count || 0;
       });
 
       const likedPostIds = new Set(
@@ -216,7 +222,8 @@ export function useComments(postId: string) {
         .from('comments')
         .select('*')
         .eq('post_id', postId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true })
+        .limit(100);
 
       if (error) throw error;
       if (!comments?.length) return [];
@@ -266,6 +273,7 @@ export function useComments(postId: string) {
       return roots;
     },
     enabled: !!postId,
+    staleTime: 15_000,
   });
 }
 

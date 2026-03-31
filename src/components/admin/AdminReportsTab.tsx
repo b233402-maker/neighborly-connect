@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { useAdminReports, useUpdateReportStatus, useBulkResolveReports } from '@/hooks/useAdmin';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -168,12 +168,12 @@ export function AdminReportsTab() {
   );
 }
 
-function TableSkeleton() {
+const TableSkeleton = forwardRef<HTMLDivElement>(function TableSkeleton(_props, ref) {
   return (
-    <div className="space-y-2">
+    <div ref={ref} className="space-y-2">
       {[1, 2, 3, 4, 5].map((i) => (
         <Skeleton key={i} className="h-14 rounded-xl" />
       ))}
     </div>
   );
-}
+});
