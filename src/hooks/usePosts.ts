@@ -194,12 +194,18 @@ export function useToggleLike() {
       const previousPosts = queryClient.getQueriesData({ queryKey: ['posts'] });
 
       queryClient.setQueriesData({ queryKey: ['posts'] }, (old: any) => {
-        if (!Array.isArray(old)) return old;
-        return old.map((p: PostWithAuthor) =>
-          p.id === postId
-            ? { ...p, user_has_liked: !hasLiked, likes_count: p.likes_count + (hasLiked ? -1 : 1) }
-            : p
-        );
+        if (!old?.pages) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            posts: page.posts.map((p: PostWithAuthor) =>
+              p.id === postId
+                ? { ...p, user_has_liked: !hasLiked, likes_count: p.likes_count + (hasLiked ? -1 : 1) }
+                : p
+            ),
+          })),
+        };
       });
 
       return { previousPosts };
