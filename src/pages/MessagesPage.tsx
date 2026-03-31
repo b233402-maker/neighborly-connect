@@ -1,31 +1,42 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Search, Send, Phone, Video, MoreVertical, CheckCheck, Smile, Paperclip, Mic } from "lucide-react";
 import { motion } from "framer-motion";
-import { mockMessages, mockChatMessages, currentUser } from "@/data/mockData";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { useConversations, useConversationMessages, useSendMessage } from "@/hooks/useMessages";
+import { useAuth } from "@/contexts/AuthContext";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function getTimeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString();
+}
 
 export default function MessagesPage() {
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
-  const [messages, setMessages] = useState(mockChatMessages);
   const [input, setInput] = useState("");
   const [search, setSearch] = useState("");
 
-  const activeConvo = mockMessages.find(m => m.id === selectedChat);
-  const filteredMessages = mockMessages.filter(m => m.from.name.toLowerCase().includes(search.toLowerCase()));
+  const { data: conversations, isLoading: loadingConvos } = useConversations();
+  const { data: messages } = useConversationMessages(selectedChat);
+  const sendMessage = useSendMessage();
+
+  const activeConvo = conversations?.find((c) => c.id === selectedChat);
+  const filteredConvos = (conversations || []).filter((c) =>
+    c.otherUser.display_name.toLowerCase().includes(search.toLowerCase())
+  );
 
   const handleSend = () => {
-    if (!input.trim()) return;
-    setMessages([...messages, { id: `cm-${Date.now()}`, from: "me" as const, text: input, time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }]);
+    if (!input.trim() || !selectedChat) return;
+    sendMessage.mutate({ conversationId: selectedChat, content: input.trim() });
     setInput("");
-    setTimeout(() => {
-      setMessages(prev => [...prev, {
-        id: `cm-${Date.now()}`, from: "them" as const,
-        text: ["Sounds great! 😊", "Sure thing, neighbor!", "No problem at all!", "Happy to help! 🤝"][Math.floor(Math.random() * 4)],
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      }]);
-    }, 1500);
   };
 
   const chatView = activeConvo && (
@@ -36,12 +47,10 @@ export default function MessagesPage() {
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
         <div className="relative">
-          <img src={activeConvo.from.avatar} alt="" className="h-10 w-10 rounded-full bg-muted" />
-          {activeConvo.online && <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-success border-2 border-card" />}
+          <img src={activeConvo.otherUser.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${activeConvo.otherUser.user_id}`} alt="" className="h-10 w-10 rounded-full bg-muted" />
         </div>
         <div className="flex-1">
-          <h3 className="font-semibold text-sm text-foreground">{activeConvo.from.name}</h3>
-          <span className="text-xs text-success">{activeConvo.online ? "Online" : "Offline"}</span>
+          <h3 className="font-semibold text-sm text-foreground">{activeConvo.otherUser.display_name}</h3>
         </div>
         <div className="flex items-center gap-1">
           <button className="p-2 rounded-full hover:bg-muted"><Phone className="h-4 w-4 text-muted-foreground" /></button>
@@ -53,23 +62,30 @@ export default function MessagesPage() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-background/50">
         <div className="text-center py-2">
-          <span className="text-[10px] text-muted-foreground bg-muted px-3 py-1 rounded-full">Today</span>
+          <span className="text-[10px] text-muted-foreground bg-muted px-3 py-1 rounded-full">Messages</span>
         </div>
-        {messages.map((msg) => (
+        {(messages || []).map((msg) => (
           <motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            className={`flex ${msg.from === "me" ? "justify-end" : "justify-start"}`}>
-            {msg.from !== "me" && <img src={activeConvo.from.avatar} alt="" className="h-7 w-7 rounded-full bg-muted mr-2 self-end" />}
+            className={`flex ${msg.sender_id === user?.id ? "justify-end" : "justify-start"}`}>
+            {msg.sender_id !== user?.id && (
+              <img src={msg.sender?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.sender_id}`} alt="" className="h-7 w-7 rounded-full bg-muted mr-2 self-end" />
+            )}
             <div className={`max-w-[70%] px-4 py-2.5 text-sm ${
-              msg.from === "me" ? "bg-primary text-primary-foreground rounded-2xl rounded-br-md" : "bg-card text-foreground rounded-2xl rounded-bl-md border border-border"
+              msg.sender_id === user?.id ? "bg-primary text-primary-foreground rounded-2xl rounded-br-md" : "bg-card text-foreground rounded-2xl rounded-bl-md border border-border"
             }`}>
-              <p>{msg.text}</p>
-              <div className={`flex items-center gap-1 mt-1 ${msg.from === "me" ? "justify-end" : ""}`}>
-                <span className="text-[10px] opacity-60">{msg.time}</span>
-                {msg.from === "me" && <CheckCheck className="h-3 w-3 opacity-60" />}
+              <p>{msg.content}</p>
+              <div className={`flex items-center gap-1 mt-1 ${msg.sender_id === user?.id ? "justify-end" : ""}`}>
+                <span className="text-[10px] opacity-60">{getTimeAgo(msg.created_at)}</span>
+                {msg.sender_id === user?.id && <CheckCheck className="h-3 w-3 opacity-60" />}
               </div>
             </div>
           </motion.div>
         ))}
+        {messages?.length === 0 && (
+          <div className="text-center py-8">
+            <p className="text-sm text-muted-foreground">No messages yet. Say hello! 👋</p>
+          </div>
+        )}
       </div>
 
       {/* Input */}
@@ -106,43 +122,53 @@ export default function MessagesPage() {
         </div>
       </div>
 
-      {/* Online avatars */}
-      <div className="flex gap-3 mb-4 overflow-x-auto pb-2">
-        {mockMessages.filter(m => m.online).map(m => (
-          <button key={m.id} onClick={() => setSelectedChat(m.id)} className="flex flex-col items-center gap-1 shrink-0">
-            <div className="relative">
-              <img src={m.from.avatar} alt="" className="h-14 w-14 rounded-full bg-muted border-2 border-success/30" />
-              <div className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-success border-2 border-background" />
-            </div>
-            <span className="text-[10px] text-muted-foreground font-medium">{m.from.name.split(" ")[0]}</span>
-          </button>
-        ))}
-      </div>
+      {loadingConvos && (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 rounded-2xl" />)}
+        </div>
+      )}
 
       {/* Conversations */}
-      <div className="bg-card rounded-2xl border border-border overflow-hidden divide-y divide-border">
-        {filteredMessages.map((msg) => (
-          <motion.button key={msg.id} whileTap={{ scale: 0.98 }} onClick={() => setSelectedChat(msg.id)}
-            className="w-full flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors text-left">
-            <div className="relative shrink-0">
-              <img src={msg.from.avatar} alt="" className="h-12 w-12 rounded-full bg-muted" />
-              {msg.online && <div className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-success border-2 border-card" />}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <span className={`text-sm ${msg.unread > 0 ? "font-bold text-foreground" : "font-medium text-foreground"}`}>{msg.from.name}</span>
-                <span className={`text-xs ${msg.unread > 0 ? "text-primary font-medium" : "text-muted-foreground"}`}>{msg.time}</span>
+      {!loadingConvos && filteredConvos.length > 0 && (
+        <div className="bg-card rounded-2xl border border-border overflow-hidden divide-y divide-border">
+          {filteredConvos.map((conv) => (
+            <motion.button key={conv.id} whileTap={{ scale: 0.98 }} onClick={() => setSelectedChat(conv.id)}
+              className="w-full flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors text-left">
+              <div className="relative shrink-0">
+                <img src={conv.otherUser.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${conv.otherUser.user_id}`} alt="" className="h-12 w-12 rounded-full bg-muted" />
               </div>
-              <p className={`text-sm truncate ${msg.unread > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>{msg.lastMessage}</p>
-            </div>
-            {msg.unread > 0 && (
-              <span className="h-5 min-w-[20px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center px-1.5 shrink-0">
-                {msg.unread}
-              </span>
-            )}
-          </motion.button>
-        ))}
-      </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className={`text-sm ${conv.unreadCount > 0 ? "font-bold text-foreground" : "font-medium text-foreground"}`}>{conv.otherUser.display_name}</span>
+                  {conv.lastMessage && (
+                    <span className={`text-xs ${conv.unreadCount > 0 ? "text-primary font-medium" : "text-muted-foreground"}`}>
+                      {getTimeAgo(conv.lastMessage.created_at)}
+                    </span>
+                  )}
+                </div>
+                <p className={`text-sm truncate ${conv.unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                  {conv.lastMessage?.content || 'No messages yet'}
+                </p>
+              </div>
+              {conv.unreadCount > 0 && (
+                <span className="h-5 min-w-[20px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center px-1.5 shrink-0">
+                  {conv.unreadCount}
+                </span>
+              )}
+            </motion.button>
+          ))}
+        </div>
+      )}
+
+      {!loadingConvos && filteredConvos.length === 0 && (
+        <div className="bg-card rounded-2xl border border-border p-12 text-center">
+          <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+            <Send className="h-7 w-7 text-muted-foreground" />
+          </div>
+          <h3 className="font-display font-semibold text-foreground mb-1">No conversations yet</h3>
+          <p className="text-sm text-muted-foreground">Start by helping a neighbor!</p>
+        </div>
+      )}
     </div>
   );
 
