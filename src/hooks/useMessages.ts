@@ -40,33 +40,45 @@ export function useConversations() {
 
       const conversationIds = participations.map((p) => p.conversation_id);
 
-      // Get other participants and messages in parallel
-      const [otherParticipantsRes, messagesRes] = await Promise.all([
-        supabase
-          .from('conversation_participants')
-          .select('conversation_id, user_id')
-          .in('conversation_id', conversationIds)
-          .neq('user_id', user.id),
-        supabase
-          .from('messages')
-          .select('*')
-          .in('conversation_id', conversationIds)
-          .order('created_at', { ascending: false }),
-      ]);
+      // Get other participants
+      const { data: otherParticipants } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id, user_id')
+        .in('conversation_id', conversationIds)
+        .neq('user_id', user.id);
 
       // Get profiles for other participants
-      const otherUserIds = [...new Set((otherParticipantsRes.data || []).map((p) => p.user_id))];
-      const { data: profiles } = await supabase
-        .from('profiles_public')
-        .select('user_id, display_name, avatar_url')
-        .in('user_id', otherUserIds);
+      const otherUserIds = [...new Set((otherParticipants || []).map((p) => p.user_id))];
+
+      // Fetch profiles and per-conversation latest message + unread count in parallel
+      const [profilesRes, ...perConvResults] = await Promise.all([
+        supabase
+          .from('profiles_public')
+          .select('user_id, display_name, avatar_url')
+          .in('user_id', otherUserIds),
+        // For each conversation, get latest message (1 row) and unread count
+        ...conversationIds.flatMap((cid) => [
+          supabase
+            .from('messages')
+            .select('content, created_at, sender_id, attachment_url, attachment_type, attachment_name')
+            .eq('conversation_id', cid)
+            .order('created_at', { ascending: false })
+            .limit(1),
+          supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('conversation_id', cid)
+            .neq('sender_id', user.id)
+            .eq('read', false),
+        ]),
+      ]);
 
       const profileMap: Record<string, any> = {};
-      (profiles || []).forEach((p) => { profileMap[p.user_id] = p; });
+      (profilesRes.data || []).forEach((p) => { profileMap[p.user_id] = p; });
 
-      // Build conversation map
+      // Build conversation items
       const convMap: Record<string, ConversationItem> = {};
-      (otherParticipantsRes.data || []).forEach((p) => {
+      (otherParticipants || []).forEach((p) => {
         const profile = profileMap[p.user_id];
         convMap[p.conversation_id] = {
           id: p.conversation_id,
@@ -80,19 +92,24 @@ export function useConversations() {
         };
       });
 
-      (messagesRes.data || []).forEach((m) => {
-        if (convMap[m.conversation_id] && !convMap[m.conversation_id].lastMessage) {
-          convMap[m.conversation_id].lastMessage = {
-            content: m.content,
-            created_at: m.created_at,
-            sender_id: m.sender_id,
-            attachment_url: (m as any).attachment_url,
-            attachment_type: (m as any).attachment_type,
-            attachment_name: (m as any).attachment_name,
-          };
-        }
-        if (m.sender_id !== user.id && !m.read && convMap[m.conversation_id]) {
-          convMap[m.conversation_id].unreadCount += 1;
+      // Assign latest message and unread count from parallel results
+      conversationIds.forEach((cid, i) => {
+        const msgResult = perConvResults[i * 2] as any;
+        const unreadResult = perConvResults[i * 2 + 1] as any;
+
+        if (convMap[cid]) {
+          const latestMsg = msgResult?.data?.[0];
+          if (latestMsg) {
+            convMap[cid].lastMessage = {
+              content: latestMsg.content,
+              created_at: latestMsg.created_at,
+              sender_id: latestMsg.sender_id,
+              attachment_url: latestMsg.attachment_url,
+              attachment_type: latestMsg.attachment_type,
+              attachment_name: latestMsg.attachment_name,
+            };
+          }
+          convMap[cid].unreadCount = unreadResult?.count || 0;
         }
       });
 
@@ -108,8 +125,6 @@ export function useConversations() {
 }
 
 export function useConversationMessages(conversationId: string | null) {
-  const { user } = useAuth();
-
   return useQuery({
     queryKey: ['messages', conversationId],
     queryFn: async () => {
@@ -118,10 +133,14 @@ export function useConversationMessages(conversationId: string | null) {
         .from('messages')
         .select('*')
         .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false })
+        .limit(100);
 
       if (error) throw error;
       if (!messages?.length) return [];
+
+      // Reverse to show oldest first in UI
+      messages.reverse();
 
       // Fetch sender profiles
       const senderIds = [...new Set(messages.map((m) => m.sender_id))];
@@ -139,7 +158,8 @@ export function useConversationMessages(conversationId: string | null) {
       }));
     },
     enabled: !!conversationId,
-    refetchInterval: 5_000,
+    staleTime: 5_000,
+    // No polling — realtime handles new messages
   });
 }
 

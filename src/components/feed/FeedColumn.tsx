@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { PostCard } from "./PostCard";
@@ -14,6 +14,9 @@ const filterMap: Record<number, string | undefined> = {
   2: 'urgent',
   3: 'offering',
 };
+
+// Cap animation delay so large feeds don't wait forever
+const MAX_ANIMATED = 8;
 
 export function FeedColumn() {
   const [showCreate, setShowCreate] = useState(false);
@@ -57,8 +60,13 @@ export function FeedColumn() {
 
         {/* Posts */}
         {!isLoading && (posts || []).map((post, i) => (
-          <motion.div key={post.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, duration: 0.3 }}>
-            <PostCard post={post} />
+          <motion.div
+            key={post.id}
+            initial={i < MAX_ANIMATED ? { opacity: 0, y: 20 } : false}
+            animate={{ opacity: 1, y: 0 }}
+            transition={i < MAX_ANIMATED ? { delay: i * 0.06, duration: 0.3 } : { duration: 0 }}
+          >
+            <MemoizedPostCard post={post} />
           </motion.div>
         ))}
 
@@ -73,3 +81,5 @@ export function FeedColumn() {
     </>
   );
 }
+
+const MemoizedPostCard = memo(PostCard, (prev, next) => prev.post.id === next.post.id && prev.post.likes_count === next.post.likes_count && prev.post.user_has_liked === next.post.user_has_liked && prev.post.comments_count === next.post.comments_count);

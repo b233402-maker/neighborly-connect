@@ -17,6 +17,7 @@ export interface NearbyUser {
 /**
  * Fetch users that have real (non-default) locations.
  * Default coords (40.7128, -74.006) are excluded — those users haven't enabled location.
+ * Limited to 200 users max to keep performance fast.
  */
 export function useNearbyUsers() {
   const { user } = useAuth();
@@ -28,7 +29,8 @@ export function useNearbyUsers() {
         .from('profiles_public')
         .select('user_id, display_name, avatar_url, karma, verified, is_pro, privacy_level, lat, lng')
         .not('lat', 'is', null)
-        .not('lng', 'is', null);
+        .not('lng', 'is', null)
+        .limit(200);
 
       if (error) throw error;
 
