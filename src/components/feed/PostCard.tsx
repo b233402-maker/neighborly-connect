@@ -231,6 +231,7 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
           </motion.div>
         )}
       </AnimatePresence>
+      <PostLikesDialog open={likesDialogOpen} onOpenChange={setLikesDialogOpen} postId={post.id} likesCount={post.likes_count} />
     </div>
   );
 }
