@@ -177,10 +177,25 @@ export function useToggleLike() {
   });
 }
 
+export interface CommentWithAuthor {
+  id: string;
+  post_id: string;
+  author_id: string;
+  text: string;
+  parent_id: string | null;
+  likes_count: number;
+  created_at: string;
+  author: { user_id: string; display_name: string; avatar_url: string | null; karma: number; verified: boolean } | null;
+  user_has_liked: boolean;
+  replies: CommentWithAuthor[];
+}
+
 export function useComments(postId: string) {
+  const { user } = useAuth();
+
   return useQuery({
     queryKey: ['comments', postId],
-    queryFn: async () => {
+    queryFn: async (): Promise<CommentWithAuthor[]> => {
       if (!postId) return [];
       const { data: comments, error } = await supabase
         .from('comments')
@@ -191,20 +206,49 @@ export function useComments(postId: string) {
       if (error) throw error;
       if (!comments?.length) return [];
 
-      // Fetch author profiles
       const authorIds = [...new Set(comments.map((c) => c.author_id))];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('user_id, display_name, avatar_url, karma, verified')
-        .in('user_id', authorIds);
+      const commentIds = comments.map((c) => c.id);
+
+      const [profilesRes, likesRes] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('user_id, display_name, avatar_url, karma, verified')
+          .in('user_id', authorIds),
+        user
+          ? supabase
+              .from('likes')
+              .select('comment_id')
+              .eq('user_id', user.id)
+              .in('comment_id', commentIds)
+          : Promise.resolve({ data: [] as { comment_id: string }[] }),
+      ]);
 
       const profileMap: Record<string, any> = {};
-      (profiles || []).forEach((p) => { profileMap[p.user_id] = p; });
+      (profilesRes.data || []).forEach((p) => { profileMap[p.user_id] = p; });
 
-      return comments.map((c) => ({
+      const likedCommentIds = new Set(
+        ((likesRes as any).data || []).map((l: any) => l.comment_id)
+      );
+
+      const enriched = comments.map((c) => ({
         ...c,
         author: profileMap[c.author_id] || null,
+        user_has_liked: likedCommentIds.has(c.id),
+        replies: [] as CommentWithAuthor[],
       }));
+
+      const map = new Map<string, CommentWithAuthor>();
+      const roots: CommentWithAuthor[] = [];
+      enriched.forEach((c) => map.set(c.id, c));
+      enriched.forEach((c) => {
+        if (c.parent_id && map.has(c.parent_id)) {
+          map.get(c.parent_id)!.replies.push(c);
+        } else {
+          roots.push(c);
+        }
+      });
+
+      return roots;
     },
     enabled: !!postId,
   });
@@ -236,6 +280,34 @@ export function useCreateComment() {
     onSuccess: (_, { postId }) => {
       queryClient.invalidateQueries({ queryKey: ['comments', postId] });
       queryClient.invalidateQueries({ queryKey: ['posts'] });
+    },
+  });
+}
+
+export function useToggleCommentLike() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ commentId, postId, hasLiked }: { commentId: string; postId: string; hasLiked: boolean }) => {
+      if (!user) throw new Error('Not authenticated');
+
+      if (hasLiked) {
+        const { error } = await supabase
+          .from('likes')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('comment_id', commentId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('likes')
+          .insert({ user_id: user.id, comment_id: commentId });
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, { postId }) => {
+      queryClient.invalidateQueries({ queryKey: ['comments', postId] });
     },
   });
 }

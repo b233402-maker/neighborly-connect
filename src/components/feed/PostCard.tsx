@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Heart, MessageCircle, Share2, HandHelping, Send, MoreHorizontal } from "lucide-react";
+import { Heart, MessageCircle, Share2, HandHelping, Send, MoreHorizontal, CornerDownRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { useToggleLike, useComments, useCreateComment, type PostWithAuthor } from "@/hooks/usePosts";
+import { useToggleLike, useComments, useCreateComment, useToggleCommentLike, type PostWithAuthor, type CommentWithAuthor } from "@/hooks/usePosts";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 
@@ -12,6 +12,109 @@ const categoryStyles: Record<string, string> = {
   urgent: "bg-destructive/10 text-destructive",
   offering: "bg-accent/10 text-accent",
 };
+
+function CommentItem({
+  comment,
+  postId,
+  depth = 0,
+}: {
+  comment: CommentWithAuthor;
+  postId: string;
+  depth?: number;
+}) {
+  const { user } = useAuth();
+  const [replyText, setReplyText] = useState("");
+  const [showReplyInput, setShowReplyInput] = useState(false);
+  const createComment = useCreateComment();
+  const toggleCommentLike = useToggleCommentLike();
+
+  const handleReply = () => {
+    if (!replyText.trim() || !user) return;
+    createComment.mutate({ postId, text: replyText.trim(), parentId: comment.id });
+    setReplyText("");
+    setShowReplyInput(false);
+  };
+
+  const handleCommentLike = () => {
+    if (!user) return;
+    toggleCommentLike.mutate({ commentId: comment.id, postId, hasLiked: comment.user_has_liked });
+  };
+
+  return (
+    <div className={depth > 0 ? "ml-6 border-l-2 border-border/30 pl-3" : ""}>
+      <div className="flex gap-2">
+        <img
+          src={comment.author?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.author_id}`}
+          alt=""
+          className="h-7 w-7 rounded-lg bg-muted flex-shrink-0 mt-0.5"
+        />
+        <div className="flex-1 min-w-0">
+          <div className="bg-muted rounded-xl px-3 py-2">
+            <p className="text-xs font-semibold text-foreground">{comment.author?.display_name || 'User'}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{comment.text}</p>
+          </div>
+          <div className="flex items-center gap-3 mt-1 ml-1">
+            <p className="text-[10px] text-muted-foreground">{getTimeAgo(comment.created_at)}</p>
+            <button
+              onClick={handleCommentLike}
+              className={`text-[10px] font-semibold transition-colors ${
+                comment.user_has_liked ? "text-destructive" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {comment.user_has_liked ? "❤️" : "Like"}{comment.likes_count > 0 && ` · ${comment.likes_count}`}
+            </button>
+            {depth < 2 && (
+              <button
+                onClick={() => setShowReplyInput(!showReplyInput)}
+                className="text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Reply
+              </button>
+            )}
+          </div>
+
+          <AnimatePresence>
+            {showReplyInput && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="flex gap-2 mt-2">
+                  <CornerDownRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0 mt-2.5" />
+                  <Input
+                    placeholder={`Reply to ${comment.author?.display_name || 'User'}...`}
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleReply()}
+                    className="flex-1 h-8 text-xs rounded-xl"
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleReply}
+                    disabled={!replyText.trim() || createComment.isPending}
+                    className="h-8 w-8 rounded-xl bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-50"
+                  >
+                    <Send className="h-3 w-3" />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {comment.replies.length > 0 && (
+            <div className="mt-2 space-y-2">
+              {comment.replies.map((reply) => (
+                <CommentItem key={reply.id} comment={reply} postId={postId} depth={depth + 1} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function PostCard({ post }: { post: PostWithAuthor }) {
   const { user } = useAuth();
@@ -101,17 +204,8 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
         {showComments && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
             <div className="pt-3 mt-3 border-t border-border/50 space-y-3">
-              {(comments || []).map((comment: any) => (
-                <div key={comment.id} className="flex gap-2">
-                  <img src={comment.author?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.author_id}`} alt="" className="h-7 w-7 rounded-lg bg-muted flex-shrink-0" />
-                  <div className="flex-1">
-                    <div className="bg-muted rounded-xl px-3 py-2">
-                      <p className="text-xs font-semibold text-foreground">{comment.author?.display_name || 'User'}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{comment.text}</p>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground mt-1 ml-1">{getTimeAgo(comment.created_at)}</p>
-                  </div>
-                </div>
+              {(comments || []).map((comment) => (
+                <CommentItem key={comment.id} comment={comment} postId={post.id} />
               ))}
               <div className="flex gap-2">
                 <Input placeholder="Write a comment..." value={commentText} onChange={(e) => setCommentText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleComment()} className="flex-1 h-9 text-xs rounded-xl" />
