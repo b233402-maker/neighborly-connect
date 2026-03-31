@@ -17,7 +17,8 @@ function notifyListeners() {
 }
 
 export function useOnlinePresence() {
-  const { user } = useAuth();
+  const auth = useContext(AuthContext);
+  const user = auth?.user ?? null;
 
   useEffect(() => {
     if (!user || globalChannel) return;
