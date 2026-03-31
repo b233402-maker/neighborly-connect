@@ -32,7 +32,13 @@ export interface PostWithAuthor {
   user_has_liked: boolean;
 }
 
-const POSTS_PAGE_SIZE = 30;
+const POSTS_PAGE_SIZE = 15;
+
+/** Flatten infinite query pages into a single array */
+export function flattenPostPages(data: any): PostWithAuthor[] {
+  if (!data?.pages) return [];
+  return data.pages.flatMap((page: any) => page.posts);
+}
 
 async function fetchPostsPage(
   filter: string | undefined,
