@@ -68,7 +68,7 @@ export function PullToRefresh({ children, queryKeys = [["posts"]] }: PullToRefre
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className="relative lg:hidden"
+      className="relative"
     >
       {/* Pull indicator */}
       <motion.div
