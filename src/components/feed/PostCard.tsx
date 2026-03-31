@@ -1,265 +1,140 @@
 import { useState } from "react";
-import { Heart, MessageCircle, Share2, HandHelping, CheckCircle2, MoreHorizontal, Send, ChevronDown, ChevronUp } from "lucide-react";
+import { Heart, MessageCircle, Share2, HandHelping, Send, MoreHorizontal } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { Post, Comment } from "@/data/mockData";
-import { currentUser } from "@/data/mockData";
 import { toast } from "sonner";
+import { useToggleLike, useComments, useCreateComment, type PostWithAuthor } from "@/hooks/usePosts";
+import { useAuth } from "@/contexts/AuthContext";
+import { Input } from "@/components/ui/input";
 
 const categoryStyles: Record<string, string> = {
-  borrow: "help-tag help-tag-borrow",
-  service: "help-tag help-tag-service",
-  urgent: "help-tag help-tag-urgent",
-  offering: "help-tag help-tag-service",
+  borrow: "bg-primary/10 text-primary",
+  service: "bg-success/10 text-success",
+  urgent: "bg-destructive/10 text-destructive",
+  offering: "bg-accent/10 text-accent",
 };
 
-function CommentItem({ comment, depth = 0 }: { comment: Comment; depth?: number }) {
-  const [liked, setLiked] = useState(false);
-  const [likes, setLikes] = useState(comment.likes);
-  const [showReplyInput, setShowReplyInput] = useState(false);
-  const [replyText, setReplyText] = useState("");
-  const [replies, setReplies] = useState(comment.replies || []);
-  const [showReplies, setShowReplies] = useState(true);
-
-  const handleReply = () => {
-    if (!replyText.trim()) return;
-    const newReply: Comment = {
-      id: `reply-${Date.now()}`,
-      author: currentUser,
-      text: replyText,
-      createdAt: "Just now",
-      likes: 0,
-    };
-    setReplies([...replies, newReply]);
-    setReplyText("");
-    setShowReplyInput(false);
-  };
-
-  return (
-    <div className={`${depth > 0 ? "ml-8 border-l-2 border-border pl-3" : ""}`}>
-      <div className="flex gap-2.5 py-2">
-        <img src={comment.author.avatar} alt={comment.author.name} className="h-7 w-7 rounded-full bg-muted shrink-0 mt-0.5" />
-        <div className="flex-1 min-w-0">
-          <div className="bg-muted rounded-xl px-3 py-2">
-            <span className="text-xs font-semibold text-foreground">{comment.author.name}</span>
-            <p className="text-sm text-foreground/80">{comment.text}</p>
-          </div>
-          <div className="flex items-center gap-3 mt-1 px-1">
-            <span className="text-[10px] text-muted-foreground">{comment.createdAt}</span>
-            <button
-              onClick={() => { setLiked(!liked); setLikes(l => liked ? l - 1 : l + 1); }}
-              className={`text-[10px] font-semibold ${liked ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              Like{likes > 0 && ` (${likes})`}
-            </button>
-            {depth < 1 && (
-              <button onClick={() => setShowReplyInput(!showReplyInput)} className="text-[10px] font-semibold text-muted-foreground hover:text-foreground">
-                Reply
-              </button>
-            )}
-          </div>
-
-          <AnimatePresence>
-            {showReplyInput && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                <div className="flex items-center gap-2 mt-2">
-                  <img src={currentUser.avatar} alt="You" className="h-6 w-6 rounded-full bg-muted" />
-                  <div className="flex-1 flex items-center bg-muted rounded-full px-3 py-1.5">
-                    <input
-                      value={replyText}
-                      onChange={(e) => setReplyText(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleReply()}
-                      placeholder="Write a reply..."
-                      className="flex-1 bg-transparent text-xs outline-none text-foreground placeholder:text-muted-foreground"
-                    />
-                    <button onClick={handleReply} className="text-primary ml-1"><Send className="h-3.5 w-3.5" /></button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {replies.length > 0 && (
-            <div className="mt-1">
-              {replies.length > 1 && (
-                <button onClick={() => setShowReplies(!showReplies)} className="flex items-center gap-1 text-[10px] text-primary font-medium px-1 mb-1">
-                  {showReplies ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                  {showReplies ? "Hide" : "View"} {replies.length} replies
-                </button>
-              )}
-              <AnimatePresence>
-                {showReplies && replies.map((reply) => (
-                  <motion.div key={reply.id} initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}>
-                    <CommentItem comment={reply} depth={depth + 1} />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function PostCard({ post, onUpdate }: { post: Post; onUpdate?: (post: Post) => void }) {
-  const [liked, setLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(post.likes);
-  const [helped, setHelped] = useState(false);
+export function PostCard({ post }: { post: PostWithAuthor }) {
+  const { user } = useAuth();
   const [showComments, setShowComments] = useState(false);
-  const [comments, setComments] = useState<Comment[]>(post.comments);
-  const [newComment, setNewComment] = useState("");
+  const [commentText, setCommentText] = useState("");
   const [shared, setShared] = useState(false);
+  const [helped, setHelped] = useState(false);
+
+  const toggleLike = useToggleLike();
+  const { data: comments } = useComments(showComments ? post.id : '');
+  const createComment = useCreateComment();
 
   const handleLike = () => {
-    setLiked(!liked);
-    setLikeCount((c) => (liked ? c - 1 : c + 1));
+    if (!user) return;
+    toggleLike.mutate({ postId: post.id, hasLiked: post.user_has_liked });
+  };
+
+  const handleComment = () => {
+    if (!commentText.trim() || !user) return;
+    createComment.mutate({ postId: post.id, text: commentText.trim() });
+    setCommentText("");
+  };
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
+    setShared(true);
+    toast.success("Link copied!");
   };
 
   const handleHelp = () => {
     setHelped(true);
-    toast.success("You offered to help! 🎉 +5 Karma", { description: `${post.author.name} will be notified.` });
+    toast.success("Thanks! The poster will be notified.");
   };
 
-  const handleComment = () => {
-    if (!newComment.trim()) return;
-    const comment: Comment = {
-      id: `new-${Date.now()}`,
-      author: currentUser,
-      text: newComment,
-      createdAt: "Just now",
-      likes: 0,
-    };
-    setComments([...comments, comment]);
-    setNewComment("");
-  };
-
-  const handleShare = () => {
-    setShared(true);
-    toast.success("Post shared! 📤", { description: "Link copied to clipboard." });
-    setTimeout(() => setShared(false), 2000);
-  };
+  const author = post.author;
+  const timeAgo = getTimeAgo(post.created_at);
 
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="feed-card"
-    >
-      {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <img src={post.author.avatar} alt={post.author.name} className="h-10 w-10 rounded-full bg-muted" />
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-semibold text-sm text-foreground">{post.author.name}</span>
-              {post.author.verified && <CheckCircle2 className="h-3.5 w-3.5 text-primary fill-primary" />}
-              {post.author.isPro && <span className="pro-badge">PRO</span>}
-            </div>
-            <span className="text-xs text-muted-foreground">{post.createdAt}</span>
+    <div className="feed-card">
+      <div className="flex items-start gap-3 mb-3">
+        <img src={author?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.author_id}`} alt="" className="h-10 w-10 rounded-xl bg-muted flex-shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-display font-semibold text-sm text-foreground">{author?.display_name || 'User'}</span>
+            {author?.verified && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-success/10 text-success font-medium">✓</span>}
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${categoryStyles[post.category] || categoryStyles.service}`}>{post.category}</span>
           </div>
+          <p className="text-[11px] text-muted-foreground">{timeAgo}</p>
         </div>
-        <button className="p-1 rounded-full hover:bg-muted transition-colors">
-          <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-        </button>
+        <button className="text-muted-foreground hover:text-foreground p-1"><MoreHorizontal className="h-4 w-4" /></button>
       </div>
 
-      {/* Tags */}
-      <div className="flex items-center gap-2 mb-2">
-        <span className={categoryStyles[post.category] || "help-tag help-tag-borrow"}>
-          {post.category.charAt(0).toUpperCase() + post.category.slice(1)}
-        </span>
-        {post.status === "fulfilled" && <span className="help-tag bg-success/10 text-success">✓ Fulfilled</span>}
-        <span className="text-xs text-muted-foreground">{post.type === "need" ? "Needs help" : "Offering help"}</span>
-      </div>
-
-      {/* Content */}
       <h3 className="font-display font-semibold text-foreground mb-1">{post.title}</h3>
       <p className="text-sm text-muted-foreground leading-relaxed mb-3">{post.description}</p>
 
-      {post.image && <img src={post.image} alt="" className="w-full rounded-xl mb-3 bg-muted" />}
+      {post.image_url && <img src={post.image_url} alt="" className="w-full rounded-xl mb-3 max-h-64 object-cover" />}
 
-      <div className="flex flex-wrap gap-1.5 mb-3">
-        {post.tags.map((tag) => (
-          <span key={tag} className="text-xs text-primary font-medium">{tag}</span>
-        ))}
-      </div>
-
-      {/* Counts */}
-      <div className="flex items-center justify-between text-xs text-muted-foreground mb-2 px-1">
-        <span>{likeCount} likes</span>
-        <span>{comments.length} comments</span>
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center justify-between border-t border-border pt-3">
-        <div className="flex items-center gap-1">
-          <motion.button whileTap={{ scale: 0.9 }} onClick={handleLike}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors ${liked ? "text-primary bg-primary/10" : "text-muted-foreground hover:bg-muted"}`}>
-            <Heart className={`h-4 w-4 ${liked ? "fill-primary" : ""}`} />
-            <span>Like</span>
-          </motion.button>
-
-          <button onClick={() => setShowComments(!showComments)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors ${showComments ? "text-primary bg-primary/10" : "text-muted-foreground hover:bg-muted"}`}>
-            <MessageCircle className="h-4 w-4" />
-            <span>Comment</span>
-          </button>
-
-          <motion.button whileTap={{ scale: 0.9 }} onClick={handleShare}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors ${shared ? "text-success" : "text-muted-foreground hover:bg-muted"}`}>
-            <Share2 className="h-4 w-4" />
-            <span>{shared ? "Shared!" : "Share"}</span>
-          </motion.button>
+      {post.tags && post.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {post.tags.map((tag) => (<span key={tag} className="text-[11px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{tag}</span>))}
         </div>
+      )}
 
-        {post.status === "open" && !helped && (
-          <motion.button whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }} onClick={handleHelp} className="btn-help">
-            <HandHelping className="h-4 w-4" /> I can help
-          </motion.button>
-        )}
-        <AnimatePresence>
-          {helped && (
-            <motion.span initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 400, damping: 15 }}
-              className="flex items-center gap-1.5 text-sm font-semibold text-success">
-              <CheckCircle2 className="h-4 w-4" /> Offered!
-            </motion.span>
-          )}
-        </AnimatePresence>
+      <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3 pt-2 border-t border-border/50">
+        <span>{post.likes_count} likes</span>
+        <span>{post.comments_count} comments</span>
       </div>
 
-      {/* Comments Section */}
+      <div className="flex items-center gap-1">
+        <button onClick={handleLike} className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-colors ${post.user_has_liked ? "text-destructive bg-destructive/10" : "text-muted-foreground hover:bg-muted"}`}>
+          <Heart className={`h-4 w-4 ${post.user_has_liked ? "fill-current" : ""}`} /> Like
+        </button>
+        <button onClick={() => setShowComments(!showComments)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-muted-foreground hover:bg-muted transition-colors">
+          <MessageCircle className="h-4 w-4" /> Comment
+        </button>
+        <button onClick={handleShare} className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-colors ${shared ? "text-primary bg-primary/10" : "text-muted-foreground hover:bg-muted"}`}>
+          <Share2 className="h-4 w-4" /> {shared ? "Shared" : "Share"}
+        </button>
+        {post.type === "need" && (
+          <button onClick={handleHelp} disabled={helped} className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-colors ${helped ? "text-success bg-success/10" : "text-success hover:bg-success/10"}`}>
+            <HandHelping className="h-4 w-4" /> {helped ? "Offered!" : "Help"}
+          </button>
+        )}
+      </div>
+
       <AnimatePresence>
         {showComments && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-            <div className="mt-3 border-t border-border pt-3">
-              {/* Comment input */}
-              <div className="flex items-center gap-2 mb-3">
-                <img src={currentUser.avatar} alt="You" className="h-8 w-8 rounded-full bg-muted" />
-                <div className="flex-1 flex items-center bg-muted rounded-full px-3 py-2">
-                  <input
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleComment()}
-                    placeholder="Write a comment..."
-                    className="flex-1 bg-transparent text-sm outline-none text-foreground placeholder:text-muted-foreground"
-                  />
-                  <button onClick={handleComment} disabled={!newComment.trim()} className="text-primary disabled:text-muted-foreground ml-2">
-                    <Send className="h-4 w-4" />
-                  </button>
+            <div className="pt-3 mt-3 border-t border-border/50 space-y-3">
+              {(comments || []).map((comment: any) => (
+                <div key={comment.id} className="flex gap-2">
+                  <img src={comment.author?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.author_id}`} alt="" className="h-7 w-7 rounded-lg bg-muted flex-shrink-0" />
+                  <div className="flex-1">
+                    <div className="bg-muted rounded-xl px-3 py-2">
+                      <p className="text-xs font-semibold text-foreground">{comment.author?.display_name || 'User'}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{comment.text}</p>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1 ml-1">{getTimeAgo(comment.created_at)}</p>
+                  </div>
                 </div>
-              </div>
-
-              {/* Comments list */}
-              <div className="space-y-0.5 max-h-80 overflow-y-auto">
-                {comments.map((comment) => (
-                  <CommentItem key={comment.id} comment={comment} />
-                ))}
+              ))}
+              <div className="flex gap-2">
+                <Input placeholder="Write a comment..." value={commentText} onChange={(e) => setCommentText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleComment()} className="flex-1 h-9 text-xs rounded-xl" />
+                <button onClick={handleComment} disabled={!commentText.trim() || createComment.isPending} className="h-9 w-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-50">
+                  <Send className="h-3.5 w-3.5" />
+                </button>
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.article>
+    </div>
   );
+}
+
+function getTimeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString();
 }

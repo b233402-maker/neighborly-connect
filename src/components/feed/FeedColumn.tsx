@@ -3,23 +3,23 @@ import { Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { PostCard } from "./PostCard";
 import { CreatePostModal } from "./CreatePostModal";
-import { mockPosts, type Post } from "@/data/mockData";
+import { usePosts } from "@/hooks/usePosts";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useFeedStore } from "@/stores/feedStore";
 
 const tabs = ["All", "Nearby", "Urgent", "Offering"];
+const filterMap: Record<number, string | undefined> = {
+  0: undefined,
+  1: undefined,
+  2: 'urgent',
+  3: 'offering',
+};
 
 export function FeedColumn() {
-  const [posts, setPosts] = useState<Post[]>(mockPosts);
   const [showCreate, setShowCreate] = useState(false);
-  const [activeTab, setActiveTab] = useState(0);
+  const { activeTab, setActiveTab } = useFeedStore();
 
-  const handleNewPost = (post: Post) => {
-    setPosts([post, ...posts]);
-  };
-
-  const filtered = activeTab === 0 ? posts
-    : activeTab === 1 ? posts
-    : activeTab === 2 ? posts.filter(p => p.category === "urgent")
-    : posts.filter(p => p.type === "offer");
+  const { data: posts, isLoading } = usePosts(filterMap[activeTab]);
 
   return (
     <>
@@ -46,21 +46,30 @@ export function FeedColumn() {
           ))}
         </div>
 
+        {/* Loading */}
+        {isLoading && (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-48 rounded-2xl" />
+            ))}
+          </div>
+        )}
+
         {/* Posts */}
-        {filtered.map((post, i) => (
+        {!isLoading && (posts || []).map((post, i) => (
           <motion.div key={post.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, duration: 0.3 }}>
             <PostCard post={post} />
           </motion.div>
         ))}
 
-        {filtered.length === 0 && (
+        {!isLoading && (!posts || posts.length === 0) && (
           <div className="feed-card text-center py-12">
-            <p className="text-muted-foreground">No posts in this category yet.</p>
+            <p className="text-muted-foreground">No posts yet. Be the first to post!</p>
           </div>
         )}
       </div>
 
-      <CreatePostModal open={showCreate} onClose={() => setShowCreate(false)} onPost={handleNewPost} />
+      <CreatePostModal open={showCreate} onClose={() => setShowCreate(false)} onPost={() => {}} />
     </>
   );
 }

@@ -30,12 +30,12 @@ const AuthPage = () => {
 
   if (isAuthenticated) return <Navigate to="/" replace />;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (mode === 'login') {
-      login(email, password);
+      await login(email, password);
     } else {
-      register(name, email, password);
+      await register(name, email, password);
     }
   };
 
@@ -49,21 +49,16 @@ const AuthPage = () => {
     <div className="min-h-screen bg-background flex">
       {/* Left Panel - Rich Branding */}
       <div className="hidden lg:flex lg:w-[52%] relative overflow-hidden">
-        {/* Gradient background */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary to-[hsl(230,80%,35%)]" />
-
-        {/* Decorative elements */}
         <div className="absolute inset-0">
           <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-primary-foreground/5 -translate-y-1/2 translate-x-1/4" />
           <div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full bg-primary-foreground/5 translate-y-1/3 -translate-x-1/4" />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary-foreground/[0.03]" />
-          {/* Grid pattern */}
           <div className="absolute inset-0 opacity-[0.04]"
             style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
         </div>
 
         <div className="relative z-10 flex flex-col justify-between p-10 xl:p-14 w-full">
-          {/* Logo */}
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
             className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-xl bg-primary-foreground/15 backdrop-blur-sm flex items-center justify-center border border-primary-foreground/10">
@@ -72,7 +67,6 @@ const AuthPage = () => {
             <span className="text-2xl font-bold font-[Lexend] text-primary-foreground tracking-tight">Neighborly</span>
           </motion.div>
 
-          {/* Hero content */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }}
             className="space-y-8 max-w-lg">
             <div>
@@ -85,7 +79,6 @@ const AuthPage = () => {
               </p>
             </div>
 
-            {/* Feature pills */}
             <div className="flex flex-wrap gap-2.5">
               {[
                 { icon: Heart, text: 'Give & Receive Help' },
@@ -103,7 +96,6 @@ const AuthPage = () => {
               ))}
             </div>
 
-            {/* Testimonial card */}
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
               className="bg-primary-foreground/10 backdrop-blur-md rounded-2xl p-5 border border-primary-foreground/10 max-w-sm">
               <div className="flex gap-1 mb-2.5">
@@ -127,7 +119,6 @@ const AuthPage = () => {
             </motion.div>
           </motion.div>
 
-          {/* Stats footer */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
             className="flex gap-8">
             {stats.map((s, i) => (
@@ -142,7 +133,6 @@ const AuthPage = () => {
 
       {/* Right Panel - Auth Form */}
       <div className="flex-1 flex flex-col min-h-screen">
-        {/* Mobile header */}
         <div className="lg:hidden flex items-center justify-between p-5 border-b border-border/50">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
@@ -156,7 +146,6 @@ const AuthPage = () => {
           <div className="w-full max-w-[400px]">
             <AnimatePresence mode="wait">
               <motion.div key={mode} variants={formVariants} initial="hidden" animate="visible" exit="exit">
-                {/* Header */}
                 <div className="mb-7">
                   <h2 className="text-[26px] font-bold text-foreground font-[Lexend] tracking-tight">
                     {mode === 'login' ? 'Welcome back' : 'Get started'}
@@ -286,7 +275,6 @@ const AuthPage = () => {
                   </Button>
                 </form>
 
-                {/* Register benefits */}
                 {mode === 'register' && (
                   <div className="mt-5 space-y-2">
                     {['Free to use forever', 'No spam, ever', 'Your data stays private'].map((t, i) => (
@@ -298,7 +286,6 @@ const AuthPage = () => {
                   </div>
                 )}
 
-                {/* Switch mode */}
                 <p className="text-center text-sm text-muted-foreground mt-7">
                   {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
                   <button
@@ -310,20 +297,9 @@ const AuthPage = () => {
                 </p>
               </motion.div>
             </AnimatePresence>
-
-            {/* Demo hint - subtle */}
-            <div className="mt-6 text-center">
-              <button
-                onClick={() => { setEmail('demo@neighborly.app'); setPassword('demo123'); }}
-                className="text-[11px] text-muted-foreground/50 hover:text-muted-foreground transition-colors underline underline-offset-2"
-              >
-                Use demo account
-              </button>
-            </div>
           </div>
         </div>
 
-        {/* Footer */}
         <div className="p-5 text-center border-t border-border/30">
           <p className="text-[11px] text-muted-foreground/40">© 2024 Neighborly. All rights reserved.</p>
         </div>
