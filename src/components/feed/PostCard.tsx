@@ -191,7 +191,9 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
       )}
 
       <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3 pt-2 border-t border-border/50">
-        <span>{post.likes_count} likes</span>
+        <button onClick={() => setLikesDialogOpen(true)} className="hover:text-foreground hover:underline transition-colors cursor-pointer">
+          {post.likes_count} likes
+        </button>
         <span>{post.comments_count} comments</span>
       </div>
 
