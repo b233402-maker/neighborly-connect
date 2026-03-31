@@ -17,7 +17,7 @@ export function MobileNav({ onCreatePost }: { onCreatePost?: () => void }) {
   const { data: unreadCount } = useUnreadCount();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
+    <nav className="mobile-nav-bar fixed bottom-0 left-0 right-0 z-50 lg:hidden">
       <div className="bg-card/95 backdrop-blur-lg border-t border-border px-1 pb-[env(safe-area-inset-bottom)]">
         <div className="flex items-center justify-around h-16">
           {tabs.map((tab) => {
