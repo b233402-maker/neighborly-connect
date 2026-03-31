@@ -50,11 +50,7 @@ const RealtimeProvider = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const LazyFallback = () => (
-  <div className="min-h-screen bg-background flex items-center justify-center">
-    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-  </div>
-);
+const LazyFallback = () => <LayoutSkeleton />;
 
 const AppRoutes = () => (
   <Suspense fallback={<LazyFallback />}>

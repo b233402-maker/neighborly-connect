@@ -102,9 +102,7 @@ export default function UserProfilePage() {
   if (isLoading) {
     return (
       <AppLayout>
-        <div className="lg:col-span-1 xl:col-span-2 flex items-center justify-center py-20">
-          <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" />
-        </div>
+        <ProfileSkeleton />
       </AppLayout>
     );
   }
