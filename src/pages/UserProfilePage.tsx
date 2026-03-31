@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCreateConversation } from "@/hooks/useMessages";
+import { useIsUserOnline } from "@/hooks/usePresence";
 import { toast } from "sonner";
 
 function getTimeAgo(dateStr: string): string {
@@ -82,6 +83,7 @@ export default function UserProfilePage() {
   const { data: profile, isLoading } = useUserProfile(userId || "");
   const { data: posts } = useUserPosts(userId || "");
   const { startChat, isPending: chatPending } = useStartConversation();
+  const isOnline = useIsUserOnline(userId);
 
   const isOwnProfile = user?.id === userId;
 
@@ -133,6 +135,9 @@ export default function UserProfilePage() {
                   alt={profile.display_name}
                   className="h-24 w-24 sm:h-28 sm:w-28 rounded-2xl bg-muted border-4 border-card shadow-lg object-cover"
                 />
+                {isOnline && (
+                  <span className="absolute bottom-1 right-1 h-4 w-4 rounded-full bg-success ring-2 ring-card" />
+                )}
                 {profile.is_pro && (
                   <span className="absolute -bottom-1 -right-1 h-8 w-8 rounded-xl bg-accent flex items-center justify-center border-2 border-card shadow-sm">
                     <Crown className="h-4 w-4 text-accent-foreground" />

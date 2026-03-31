@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useRealtimeSubscriptions } from "@/hooks/useRealtime";
+import { useOnlinePresence } from "@/hooks/usePresence";
 import AuthPage from "./pages/AuthPage";
 import Index from "./pages/Index";
 import MapPage from "./pages/MapPage";
@@ -44,6 +45,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const RealtimeProvider = ({ children }: { children: React.ReactNode }) => {
   useRealtimeSubscriptions();
+  useOnlinePresence();
   return <>{children}</>;
 };
 
