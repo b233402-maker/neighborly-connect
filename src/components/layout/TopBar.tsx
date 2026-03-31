@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Search, MapPin, ChevronDown, Eye, Users, Globe, Crosshair, Loader2, User, FileText, X } from "lucide-react";
+import { Search, MapPin, ChevronDown, Eye, Users, Globe, Crosshair, Loader2, User, FileText, X, Settings, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUpdateProfile } from "@/hooks/useProfile";
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,16 +23,18 @@ interface SearchResult {
 }
 
 export function TopBar() {
-  const { profile, user } = useAuth();
+  const { profile, user, logout } = useAuth();
   const navigate = useNavigate();
   const updateProfile = useUpdateProfile();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
   const currentVisibility = profile?.privacy_level || "blurred";
   const currentOption = visibilityOptions.find(o => o.id === currentVisibility) || visibilityOptions[2];
 
@@ -40,6 +42,7 @@ export function TopBar() {
     const handleClick = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setShowDropdown(false);
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) setShowResults(false);
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) setShowProfileMenu(false);
     };
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
@@ -232,6 +235,47 @@ export function TopBar() {
                     {currentVisibility === opt.id && <div className="h-2 w-2 rounded-full bg-primary" />}
                   </button>
                 ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Profile avatar menu */}
+        <div className="relative shrink-0" ref={profileMenuRef}>
+          <button onClick={() => setShowProfileMenu(!showProfileMenu)}
+            className="h-9 w-9 rounded-full overflow-hidden border-2 border-transparent hover:border-primary/30 transition-colors">
+            <img
+              src={profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`}
+              alt="Profile"
+              className="h-full w-full object-cover bg-muted"
+            />
+          </button>
+
+          <AnimatePresence>
+            {showProfileMenu && (
+              <motion.div initial={{ opacity: 0, y: -4, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.95 }}
+                className="absolute right-0 top-full mt-2 w-56 bg-card rounded-2xl border border-border shadow-xl p-2 z-50">
+                <div className="px-3 py-2.5 border-b border-border mb-1">
+                  <p className="text-sm font-semibold text-foreground truncate">{profile?.display_name || 'User'}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">{profile?.karma || 0} karma</p>
+                </div>
+                <button onClick={() => { setShowProfileMenu(false); navigate('/profile'); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-muted transition-colors">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-foreground">My Profile</span>
+                </button>
+                <button onClick={() => { setShowProfileMenu(false); navigate('/settings'); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-muted transition-colors">
+                  <Settings className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-foreground">Settings</span>
+                </button>
+                <div className="border-t border-border mt-1 pt-1">
+                  <button onClick={async () => { setShowProfileMenu(false); await logout(); navigate('/auth'); }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-destructive/10 transition-colors">
+                    <LogOut className="h-4 w-4 text-destructive" />
+                    <span className="text-sm text-destructive">Sign Out</span>
+                  </button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
