@@ -125,6 +125,7 @@ export function PostCard({ post }: { post: PostWithAuthor }) {
   const [commentText, setCommentText] = useState("");
   const [shared, setShared] = useState(false);
   const [helped, setHelped] = useState(false);
+  const [likesDialogOpen, setLikesDialogOpen] = useState(false);
 
   const toggleLike = useToggleLike();
   const { data: comments } = useComments(showComments ? post.id : '');
