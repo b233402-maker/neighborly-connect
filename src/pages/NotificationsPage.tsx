@@ -22,10 +22,11 @@ const iconMap: Record<string, React.ReactNode> = {
   comment: <MessageCircle className="h-4 w-4 text-primary" />,
   like: <Heart className="h-4 w-4 text-primary fill-primary" />,
   karma: <Star className="h-4 w-4 text-karma fill-karma" />,
+  nearby_post: <MapPin className="h-4 w-4 text-accent-foreground" />,
   system: <Bell className="h-4 w-4 text-muted-foreground" />,
 };
 const bgMap: Record<string, string> = {
-  help: "bg-success/10", comment: "bg-primary/10", like: "bg-primary/10", karma: "bg-karma/10", system: "bg-muted",
+  help: "bg-success/10", comment: "bg-primary/10", like: "bg-primary/10", karma: "bg-karma/10", nearby_post: "bg-accent/20", system: "bg-muted",
 };
 
 const filterTabs = ["All", "Help", "Comments", "Likes", "Karma"];
