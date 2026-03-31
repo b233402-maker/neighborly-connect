@@ -96,8 +96,8 @@ export default function ProfilePage() {
   const [followListTab, setFollowListTab] = useState<"followers" | "following">("followers");
   const { data: badgeStats, isLoading: badgeLoading } = useBadgeStats(user?.id);
 
-  const { data: allPosts } = usePosts();
-  const userPosts = (allPosts || []).filter((p) => p.author_id === user?.id);
+  const { data: allPostsData } = usePosts();
+  const userPosts = flattenPostPages(allPostsData).filter((p) => p.author_id === user?.id);
 
   const startEdit = () => {
     setEditName(profile?.display_name || '');

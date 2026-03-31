@@ -40,7 +40,8 @@ export function MiniMap() {
   const markersRef = useRef<L.Layer[]>([]);
   const userMarkerRef = useRef<L.CircleMarker | null>(null);
 
-  const { data: posts } = usePosts();
+  const { data: postsData } = usePosts();
+  const posts = flattenPostPages(postsData);
   const { data: nearbyUsers } = useNearbyUsers();
   const { data: friendIds } = useFriendIds();
 
