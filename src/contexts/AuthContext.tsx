@@ -17,6 +17,8 @@ interface Profile {
   lat: number | null;
   lng: number | null;
   privacy_level: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface AuthContextType {
