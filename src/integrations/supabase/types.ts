@@ -351,6 +351,7 @@ export type Database = {
           display_name: string
           email: string | null
           id: string
+          is_banned: boolean
           is_pro: boolean
           karma: number
           lat: number | null
@@ -367,6 +368,7 @@ export type Database = {
           display_name?: string
           email?: string | null
           id?: string
+          is_banned?: boolean
           is_pro?: boolean
           karma?: number
           lat?: number | null
@@ -383,6 +385,7 @@ export type Database = {
           display_name?: string
           email?: string | null
           id?: string
+          is_banned?: boolean
           is_pro?: boolean
           karma?: number
           lat?: number | null
