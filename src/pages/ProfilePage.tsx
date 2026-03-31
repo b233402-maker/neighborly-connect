@@ -3,7 +3,7 @@ import { Star, Shield, Crown, MapPin, Calendar, Edit3, Users, HandHelping, Messa
 import { motion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
-import { usePosts } from "@/hooks/usePosts";
+import { usePosts, flattenPostPages } from "@/hooks/usePosts";
 import { useUpdateProfile } from "@/hooks/useProfile";
 import { useFollowCounts } from "@/hooks/useFollows";
 import { FollowListDialog } from "@/components/social/FollowListDialog";
