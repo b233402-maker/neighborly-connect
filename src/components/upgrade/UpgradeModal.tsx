@@ -1,6 +1,23 @@
-import { X, Crown, Eye, FileText, Shield, MapPin, Lock, Zap, Star } from "lucide-react";
+import { X, Crown, Eye, FileText, Shield, MapPin, Lock, Zap, Star, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+
+const PLANS = {
+  monthly: {
+    priceId: "price_1TH8WJ7EdjrkCDlX12o740Mi",
+    label: "Monthly",
+    price: "$4.99/mo",
+  },
+  annual: {
+    priceId: "price_1TH8Wx7EdjrkCDlXmrGAoW4E",
+    label: "Annual",
+    price: "$2.99/mo ($35.88/yr)",
+    badge: "Save 40%",
+  },
+};
 
 const benefits = [
   { icon: Eye, text: "See exact live locations (if permitted)" },
@@ -19,12 +36,48 @@ interface UpgradeModalProps {
 }
 
 export function UpgradeModal({ open, onClose }: UpgradeModalProps) {
+  const [loading, setLoading] = useState<string | null>(null);
+  const { profile } = useAuth();
+
   if (!open) return null;
 
-  const handleSubscribe = (plan: string) => {
-    toast.success(`${plan} plan selected! Payment integration coming soon.`);
-    onClose();
+  const handleSubscribe = async (plan: keyof typeof PLANS) => {
+    setLoading(plan);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { priceId: PLANS[plan].priceId },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, "_blank");
+      } else {
+        throw new Error("No checkout URL returned");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to start checkout");
+    } finally {
+      setLoading(null);
+    }
   };
+
+  const handleManageSubscription = async () => {
+    setLoading("manage");
+    try {
+      const { data, error } = await supabase.functions.invoke("customer-portal");
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, "_blank");
+      } else {
+        throw new Error("No portal URL returned");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to open subscription management");
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const isPro = profile?.is_pro;
 
   return (
     <AnimatePresence>
@@ -41,7 +94,9 @@ export function UpgradeModal({ open, onClose }: UpgradeModalProps) {
               <Crown className="h-8 w-8 text-accent" />
             </div>
             <h2 className="font-display font-bold text-2xl text-foreground">Pro Neighbor</h2>
-            <p className="text-sm text-muted-foreground mt-1">Unlock the full power of your community</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {isPro ? "You're a Pro Neighbor! 🎉" : "Unlock the full power of your community"}
+            </p>
           </div>
 
           <div className="p-6 space-y-4">
@@ -56,19 +111,32 @@ export function UpgradeModal({ open, onClose }: UpgradeModalProps) {
               ))}
             </div>
 
-            <div className="space-y-2 pt-2">
-              <button onClick={() => handleSubscribe("Monthly")}
-                className="w-full py-3.5 rounded-xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90 transition-colors">
-                Monthly — $4.99/mo
-              </button>
-              <button onClick={() => handleSubscribe("Annual")}
-                className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors relative overflow-hidden">
-                <span className="absolute top-0 right-4 bg-success text-success-foreground text-[10px] font-bold px-2 py-0.5 rounded-b-lg">Save 40%</span>
-                Annual — $2.99/mo ($35.88/yr)
-              </button>
-            </div>
+            {isPro ? (
+              <div className="space-y-2 pt-2">
+                <div className="text-center text-sm text-success font-semibold mb-2">✅ Your Pro subscription is active</div>
+                <button onClick={handleManageSubscription} disabled={!!loading}
+                  className="w-full py-3.5 rounded-xl bg-muted text-foreground font-semibold text-sm hover:bg-muted/80 transition-colors flex items-center justify-center gap-2">
+                  {loading === "manage" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Manage Subscription
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2 pt-2">
+                <button onClick={() => handleSubscribe("monthly")} disabled={!!loading}
+                  className="w-full py-3.5 rounded-xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90 transition-colors flex items-center justify-center gap-2">
+                  {loading === "monthly" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Monthly — {PLANS.monthly.price}
+                </button>
+                <button onClick={() => handleSubscribe("annual")} disabled={!!loading}
+                  className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors relative overflow-hidden flex items-center justify-center gap-2">
+                  <span className="absolute top-0 right-4 bg-success text-success-foreground text-[10px] font-bold px-2 py-0.5 rounded-b-lg">{PLANS.annual.badge}</span>
+                  {loading === "annual" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Annual — {PLANS.annual.price}
+                </button>
+              </div>
+            )}
 
-            <p className="text-center text-[10px] text-muted-foreground">Cancel anytime · 7-day free trial · Secure payment</p>
+            <p className="text-center text-[10px] text-muted-foreground">Cancel anytime · Secure payment via Stripe</p>
           </div>
         </motion.div>
       </motion.div>
