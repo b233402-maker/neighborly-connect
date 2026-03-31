@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCreateConversation } from "@/hooks/useMessages";
+import { useIsUserOnline } from "@/hooks/usePresence";
 import { toast } from "sonner";
 
 function getTimeAgo(dateStr: string): string {
