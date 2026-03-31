@@ -119,8 +119,9 @@ export default function UserProfilePage() {
 
   const stats = [
     { label: "Posts", value: posts?.length || 0, icon: MessageCircle, color: "text-primary", bg: "bg-primary/10" },
-    { label: "Karma", value: profile.karma, icon: Star, color: "text-accent", bg: "bg-accent/10" },
-    { label: "Total Likes", value: (posts || []).reduce((s, p) => s + (p.likes_count || 0), 0), icon: Heart, color: "text-primary", bg: "bg-primary/10" },
+    { label: "Followers", value: followCounts?.followers || 0, icon: Users, color: "text-accent", bg: "bg-accent/10" },
+    { label: "Following", value: followCounts?.following || 0, icon: UserCheck, color: "text-success", bg: "bg-success/10" },
+    { label: "Karma", value: profile.karma, icon: Star, color: "text-karma", bg: "bg-karma/10" },
   ];
 
   return (
