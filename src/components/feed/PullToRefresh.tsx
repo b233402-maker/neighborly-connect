@@ -73,7 +73,7 @@ export function PullToRefresh({ children, queryKeys = [["posts"]] }: PullToRefre
       {/* Pull indicator */}
       <motion.div
         style={{ y: indicatorY, opacity: indicatorOpacity, scale: indicatorScale }}
-        className="absolute left-1/2 -translate-x-1/2 -top-2 z-10 flex items-center justify-center"
+        className="absolute left-1/2 -translate-x-1/2 -top-2 z-10 flex items-center justify-center lg:hidden"
       >
         <div className={`h-10 w-10 rounded-full flex items-center justify-center shadow-lg border border-border ${
           refreshing ? "bg-primary text-primary-foreground" : "bg-card text-primary"
