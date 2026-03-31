@@ -58,14 +58,57 @@ export function usePostHelpOffers(postId: string) {
     queryKey: ['help-offers', postId],
     queryFn: async () => {
       if (!postId) return [];
-      const { data, error } = await supabase
+      const { data: offers, error } = await supabase
         .from('help_offers')
         .select('*')
         .eq('post_id', postId)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data || [];
+      if (!offers?.length) return [];
+
+      const userIds = [...new Set(offers.map((o) => o.user_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, avatar_url, karma, verified')
+        .in('user_id', userIds);
+
+      const profileMap: Record<string, any> = {};
+      (profiles || []).forEach((p) => { profileMap[p.user_id] = p; });
+
+      return offers.map((o) => ({
+        ...o,
+        helper: profileMap[o.user_id] || null,
+      }));
     },
     enabled: !!postId,
+  });
+}
+
+export function useRespondHelpOffer() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ offerId, postId, action }: { offerId: string; postId: string; action: 'accepted' | 'rejected' }) => {
+      const { error } = await supabase
+        .from('help_offers')
+        .update({ status: action })
+        .eq('id', offerId);
+      if (error) throw error;
+    },
+    onMutate: async ({ offerId, postId, action }) => {
+      await queryClient.cancelQueries({ queryKey: ['help-offers', postId] });
+      const prev = queryClient.getQueryData(['help-offers', postId]);
+      queryClient.setQueryData(['help-offers', postId], (old: any[]) =>
+        old?.map((o: any) => o.id === offerId ? { ...o, status: action } : o) || []
+      );
+      return { prev, postId };
+    },
+    onError: (_err, _vars, context) => {
+      if (context) queryClient.setQueryData(['help-offers', context.postId], context.prev);
+    },
+    onSettled: (_d, _e, { postId }) => {
+      queryClient.invalidateQueries({ queryKey: ['help-offers', postId] });
+      queryClient.invalidateQueries({ queryKey: ['my-help-history'] });
+    },
   });
 }
