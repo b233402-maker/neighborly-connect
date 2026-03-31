@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Send, Phone, Video, MoreVertical, CheckCheck, Smile, Paperclip, Mic } from "lucide-react";
 import { motion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useConversations, useConversationMessages, useSendMessage } from "@/hooks/useMessages";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useSearchParams } from "react-router-dom";
 
 function getTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -20,9 +21,15 @@ function getTimeAgo(dateStr: string): string {
 
 export default function MessagesPage() {
   const { user } = useAuth();
-  const [selectedChat, setSelectedChat] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const [selectedChat, setSelectedChat] = useState<string | null>(searchParams.get('chat'));
   const [input, setInput] = useState("");
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    const chatParam = searchParams.get('chat');
+    if (chatParam) setSelectedChat(chatParam);
+  }, [searchParams]);
 
   const { data: conversations, isLoading: loadingConvos } = useConversations();
   const { data: messages } = useConversationMessages(selectedChat);
