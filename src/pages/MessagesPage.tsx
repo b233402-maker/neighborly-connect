@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, Send, Phone, Video, MoreVertical, CheckCheck, Smile, Paperclip, Mic } from "lucide-react";
 import { motion } from "framer-motion";
+import { AppLayout } from "@/components/layout/AppLayout";
 import { useConversations, useConversationMessages, useSendMessage } from "@/hooks/useMessages";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
