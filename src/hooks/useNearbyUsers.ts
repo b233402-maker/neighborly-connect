@@ -25,7 +25,7 @@ export function useNearbyUsers() {
     queryKey: ['nearby-users'],
     queryFn: async (): Promise<NearbyUser[]> => {
       const { data, error } = await supabase
-        .from('profiles')
+        .from('profiles_public')
         .select('user_id, display_name, avatar_url, karma, verified, is_pro, privacy_level, lat, lng')
         .not('lat', 'is', null)
         .not('lng', 'is', null);
