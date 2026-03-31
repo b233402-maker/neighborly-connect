@@ -44,67 +44,74 @@ export function FeedColumn() {
 
   return (
     <>
-      <div className="flex flex-col gap-4 pb-24 lg:pb-4">
-        {/* Create Post Prompt */}
-        <button onClick={() => setShowCreate(true)} className="feed-card flex items-center gap-3 cursor-pointer hover:shadow-md transition-shadow">
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <Plus className="h-5 w-5 text-primary" />
-          </div>
-          <span className="flex-1 text-left text-sm text-muted-foreground bg-muted rounded-full px-4 py-2.5">
-            What do you need help with?
-          </span>
-        </button>
+      <PullToRefresh queryKeys={[["posts"]]}>
+        <div className="flex flex-col gap-4 pb-24 lg:pb-4">
+          {/* Create Post Prompt */}
+          <button onClick={() => setShowCreate(true)} className="feed-card flex items-center gap-3 cursor-pointer hover:shadow-md transition-shadow">
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <Plus className="h-5 w-5 text-primary" />
+            </div>
+            <span className="flex-1 text-left text-sm text-muted-foreground bg-muted rounded-full px-4 py-2.5">
+              What do you need help with?
+            </span>
+          </button>
 
-        {/* Feed Tabs */}
-        <div className="flex items-center gap-1 bg-card rounded-full p-1 border border-border">
-          {tabs.map((tab, i) => (
-            <button key={tab} onClick={() => setActiveTab(i)}
-              className={`flex-1 text-sm font-medium py-2 rounded-full transition-colors ${
-                i === activeTab ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted"
-              }`}>
-              {tab}
-            </button>
-          ))}
-        </div>
-
-        {/* Loading */}
-        {isLoading && (
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-48 rounded-2xl" />
+          {/* Feed Tabs */}
+          <div className="flex items-center gap-1 bg-card rounded-full p-1 border border-border">
+            {tabs.map((tab, i) => (
+              <button key={tab} onClick={() => setActiveTab(i)}
+                className={`flex-1 text-sm font-medium py-2 rounded-full transition-colors ${
+                  i === activeTab ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}>
+                {tab}
+              </button>
             ))}
           </div>
-        )}
 
-        {/* Posts */}
-        {!isLoading && posts.map((post, i) => (
-          <motion.div
-            key={post.id}
-            initial={i < MAX_ANIMATED ? { opacity: 0, y: 20 } : false}
-            animate={{ opacity: 1, y: 0 }}
-            transition={i < MAX_ANIMATED ? { delay: i * 0.06, duration: 0.3 } : { duration: 0 }}
-          >
-            <MemoizedPostCard post={post} />
-          </motion.div>
-        ))}
+          {/* Loading */}
+          {isLoading && (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-48 rounded-2xl" />
+              ))}
+            </div>
+          )}
 
-        {/* Load more trigger */}
-        {!isLoading && hasNextPage && (
-          <div ref={loadMoreRef} className="flex justify-center py-4">
-            {isFetchingNextPage && (
-              <div className="space-y-4 w-full">
-                <Skeleton className="h-48 rounded-2xl" />
-                <Skeleton className="h-48 rounded-2xl" />
-              </div>
-            )}
-          </div>
-        )}
+          {/* Posts */}
+          {!isLoading && posts.map((post, i) => (
+            <motion.div
+              key={post.id}
+              initial={i < MAX_ANIMATED ? { opacity: 0, y: 20 } : false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={i < MAX_ANIMATED ? { delay: i * 0.06, duration: 0.3 } : { duration: 0 }}
+            >
+              <MemoizedPostCard post={post} />
+            </motion.div>
+          ))}
 
-        {!isLoading && posts.length === 0 && (
-          <div className="feed-card text-center py-12">
-            <p className="text-muted-foreground">No posts yet. Be the first to post!</p>
-          </div>
-        )}
+          {/* Load more trigger */}
+          {!isLoading && hasNextPage && (
+            <div ref={loadMoreRef} className="flex justify-center py-4">
+              {isFetchingNextPage && (
+                <div className="space-y-4 w-full">
+                  <Skeleton className="h-48 rounded-2xl" />
+                  <Skeleton className="h-48 rounded-2xl" />
+                </div>
+              )}
+            </div>
+          )}
+
+          {!isLoading && posts.length === 0 && (
+            <div className="feed-card text-center py-12">
+              <p className="text-muted-foreground">No posts yet. Be the first to post!</p>
+            </div>
+          )}
+        </div>
+      </PullToRefresh>
+
+      {/* Desktop: render without pull-to-refresh wrapper */}
+      <div className="hidden lg:block">
+        {/* Already handled by PullToRefresh which hides on lg+ */}
       </div>
 
       <CreatePostModal open={showCreate} onClose={() => setShowCreate(false)} onPost={() => {}} />
