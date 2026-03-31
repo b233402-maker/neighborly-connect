@@ -86,6 +86,9 @@ export function useConversations() {
             content: m.content,
             created_at: m.created_at,
             sender_id: m.sender_id,
+            attachment_url: (m as any).attachment_url,
+            attachment_type: (m as any).attachment_type,
+            attachment_name: (m as any).attachment_name,
           };
         }
         if (m.sender_id !== user.id && !m.read && convMap[m.conversation_id]) {
