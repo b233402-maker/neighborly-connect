@@ -106,6 +106,30 @@ export type Database = {
         }
         Relationships: []
       }
+      follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+          status?: string
+        }
+        Relationships: []
+      }
       help_offers: {
         Row: {
           created_at: string
@@ -494,10 +518,15 @@ export type Database = {
       }
     }
     Functions: {
+      are_friends: {
+        Args: { _user1: string; _user2: string }
+        Returns: boolean
+      }
       create_conversation_with_participant: {
         Args: { other_user_id: string }
         Returns: string
       }
+      get_friend_ids: { Args: { _user_id: string }; Returns: string[] }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
