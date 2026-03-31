@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Bell, Shield, MapPin, Eye, Crown, LogOut, ChevronRight, ToggleLeft, ToggleRight, Palette, Globe, Lock, Smartphone, HelpCircle, FileText, Camera, Mail, Loader2 } from "lucide-react";
+import { User, Bell, Shield, MapPin, Eye, Crown, LogOut, ChevronRight, ToggleLeft, ToggleRight, Palette, Globe, Lock, Smartphone, HelpCircle, FileText, Camera, Mail, Loader2, CreditCard, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUpdateProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
+import { UpgradeModal } from "@/components/upgrade/UpgradeModal";
 
 interface SettingToggle { label: string; description: string; key: string; }
 
@@ -50,6 +51,8 @@ export default function SettingsPage() {
   const { logout, profile, user } = useAuth();
   const updateProfile = useUpdateProfile();
   const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [managingPortal, setManagingPortal] = useState(false);
 
   // Profile edit state
   const [editName, setEditName] = useState(profile?.display_name || "");
@@ -157,29 +160,55 @@ export default function SettingsPage() {
         );
       case "notifications":
         return <div className="divide-y divide-border">{notifSettings.map(s => <ToggleRow key={s.key} setting={s} />)}</div>;
-      case "subscription":
+      case "subscription": {
+        const handleManagePortal = async () => {
+          setManagingPortal(true);
+          try {
+            const { data, error } = await supabase.functions.invoke("customer-portal");
+            if (error) throw error;
+            if (data?.url) window.open(data.url, "_blank");
+            else throw new Error("No portal URL");
+          } catch (err: any) {
+            toast.error(err.message || "Failed to open subscription management");
+          } finally {
+            setManagingPortal(false);
+          }
+        };
+
         return (
           <div className="space-y-4">
             {profile?.is_pro ? (
-              <div className="text-center p-6 rounded-2xl bg-gradient-to-br from-accent/10 to-accent/5 border border-accent/20">
-                <Crown className="h-12 w-12 text-accent mx-auto mb-3" />
-                <h2 className="font-display font-bold text-xl text-foreground">You're a Pro Neighbor! 🎉</h2>
-                <p className="text-sm text-muted-foreground mt-2">Your subscription is active</p>
-                <p className="text-xs text-muted-foreground mt-1">$4.99/month · Cancel anytime</p>
+              <div className="p-6 rounded-2xl bg-gradient-to-br from-accent/10 to-accent/5 border border-accent/20">
+                <div className="text-center mb-5">
+                  <Crown className="h-12 w-12 text-accent mx-auto mb-3" />
+                  <h2 className="font-display font-bold text-xl text-foreground">Pro Neighbor Active 🎉</h2>
+                  <p className="text-sm text-muted-foreground mt-1">You have access to all premium features</p>
+                </div>
+                <div className="space-y-2">
+                  <button onClick={handleManagePortal} disabled={managingPortal}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-card border border-border text-sm font-semibold text-foreground hover:bg-muted transition-colors">
+                    {managingPortal ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+                    Manage Subscription
+                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                  <p className="text-center text-[10px] text-muted-foreground">Update payment method, change plan, or cancel via Stripe</p>
+                </div>
               </div>
             ) : (
-              <div className="text-center p-6 rounded-2xl bg-muted/50 border border-border">
+              <div className="p-6 rounded-2xl bg-muted/50 border border-border text-center">
                 <Crown className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                 <h2 className="font-display font-bold text-xl text-foreground">Free Plan</h2>
                 <p className="text-sm text-muted-foreground mt-2">Upgrade to Pro for premium features</p>
-                <button onClick={() => navigate('/upgrade')}
+                <button onClick={() => setShowUpgradeModal(true)}
                   className="mt-4 px-6 py-2.5 rounded-xl bg-accent text-accent-foreground text-sm font-semibold hover:bg-accent/90 transition-colors">
                   Upgrade to Pro — $4.99/mo
                 </button>
               </div>
             )}
             <div className="space-y-2.5">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pro Benefits</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                {profile?.is_pro ? "Your Pro Benefits" : "Pro Benefits"}
+              </h3>
               {[
                 { icon: Eye, text: "See exact live locations (if permitted)" },
                 { icon: FileText, text: "Post unlimited help requests" },
@@ -189,15 +218,18 @@ export default function SettingsPage() {
                 { icon: Lock, text: "Private messaging with anyone" },
               ].map((f, i) => (
                 <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
-                  <div className="h-8 w-8 rounded-lg bg-success/10 flex items-center justify-center">
-                    <f.icon className="h-4 w-4 text-success" />
+                  <div className={`h-8 w-8 rounded-lg ${profile?.is_pro ? "bg-success/10" : "bg-muted"} flex items-center justify-center`}>
+                    <f.icon className={`h-4 w-4 ${profile?.is_pro ? "text-success" : "text-muted-foreground"}`} />
                   </div>
                   <span className="text-sm text-foreground">{f.text}</span>
+                  {profile?.is_pro && <span className="ml-auto text-[10px] text-success font-semibold">Active</span>}
                 </div>
               ))}
             </div>
+            <UpgradeModal open={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
           </div>
         );
+      }
       case "appearance":
         return (
           <div className="space-y-4">
