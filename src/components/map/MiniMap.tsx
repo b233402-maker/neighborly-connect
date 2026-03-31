@@ -29,9 +29,10 @@ function getTimeAgo(dateStr: string): string {
 }
 
 export function MiniMap() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const { location } = useUserLocation();
+  const isPro = profile?.is_pro || false;
   const [radius, setRadius] = useState([2]);
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -103,7 +104,8 @@ export function MiniMap() {
       posts.map(p => ({ ...p, privacy_level: p.author?.privacy_level || 'public', user_id: p.author_id })),
       radius[0],
       user?.id,
-      friendIds
+      friendIds,
+      isPro,
     );
 
     visiblePosts.forEach((post) => {
@@ -125,7 +127,8 @@ export function MiniMap() {
         nearbyUsers,
         radius[0],
         user?.id,
-        friendIds
+        friendIds,
+        isPro,
       );
 
       visibleUsers.slice(0, 10).forEach((u) => {
@@ -142,13 +145,14 @@ export function MiniMap() {
   }, [radius]);
 
   // Filter posts by radius for nearby activity list
-  const nearbyPosts = posts 
+  const nearbyPosts = posts
     ? filterByPrivacy(
         location.lat, location.lng,
         posts.map(p => ({ ...p, privacy_level: p.author?.privacy_level || 'public', user_id: p.author_id })),
         radius[0],
         user?.id,
-        friendIds
+        friendIds,
+        isPro,
       ).slice(0, 5)
     : [];
 
