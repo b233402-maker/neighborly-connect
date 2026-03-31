@@ -4,7 +4,7 @@ import { MobileNav } from "./MobileNav";
 import { LeftSidebar } from "@/components/sidebar/LeftSidebar";
 import { LocationOnboarding } from "@/components/onboarding/LocationOnboarding";
 import { CreatePostModal } from "@/components/feed/CreatePostModal";
-import type { Post } from "@/data/mockData";
+
 
 interface AppLayoutProps {
   children: React.ReactNode;
