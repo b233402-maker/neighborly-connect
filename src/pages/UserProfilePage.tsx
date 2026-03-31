@@ -170,10 +170,31 @@ export default function UserProfilePage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
                 <div className="karma-badge text-sm">
                   <Star className="h-4 w-4 fill-karma" /> {profile.karma}
                 </div>
+                <button
+                  onClick={() => toggleFollow.mutate({ targetUserId: profile.user_id, isFollowing: followStatus?.isFollowing || false })}
+                  disabled={toggleFollow.isPending}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 ${
+                    followStatus?.isFriend
+                      ? "bg-success/10 text-success border border-success/30 hover:bg-success/20"
+                      : followStatus?.isFollowing
+                      ? "bg-muted text-foreground border border-border hover:bg-muted/80"
+                      : "bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20"
+                  }`}
+                >
+                  {followStatus?.isFriend ? (
+                    <><UserCheck className="h-4 w-4" /> Friends</>
+                  ) : followStatus?.isFollowing ? (
+                    <><UserCheck className="h-4 w-4" /> Following</>
+                  ) : followStatus?.isFollowedBy ? (
+                    <><UserPlus className="h-4 w-4" /> Follow Back</>
+                  ) : (
+                    <><UserPlus className="h-4 w-4" /> Follow</>
+                  )}
+                </button>
                 <button
                   onClick={() => startChat(profile.user_id)}
                   disabled={chatPending}
