@@ -51,9 +51,21 @@ serve(async (req) => {
 
     if (hasActiveSub) {
       const sub = subscriptions.data[0];
-      if (sub.current_period_end && typeof sub.current_period_end === 'number') {
-        subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
+      const rawPeriodEnd = sub.current_period_end;
+      const periodEndSeconds =
+        typeof rawPeriodEnd === "number"
+          ? rawPeriodEnd
+          : typeof rawPeriodEnd === "string"
+            ? Number(rawPeriodEnd)
+            : NaN;
+
+      if (Number.isFinite(periodEndSeconds) && periodEndSeconds > 0) {
+        const periodEndDate = new Date(periodEndSeconds * 1000);
+        if (!Number.isNaN(periodEndDate.getTime())) {
+          subscriptionEnd = periodEndDate.toISOString();
+        }
       }
+
       priceId = sub.items.data[0]?.price?.id || null;
     }
 
