@@ -296,30 +296,30 @@ function ChatView({ activeConvo, selectedChat, onBack }: { activeConvo: any; sel
       </div>
 
       {/* Messenger-style input */}
-      <div className="px-2 py-2 bg-card shrink-0">
+      <div className="px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] bg-card shrink-0">
         <AnimatePresence>
           {pendingFile && <div className="px-2 pb-2"><AttachmentPreview file={pendingFile} onRemove={() => setPendingFile(null)} /></div>}
         </AnimatePresence>
-        <div className="flex items-end gap-1">
+        <div className="flex items-center gap-1 min-w-0">
           <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} accept="image/*,.pdf,.doc,.docx,.txt,.zip,.xlsx,.csv" />
-          <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-full hover:bg-muted shrink-0 mb-0.5">
+          <button onClick={() => fileInputRef.current?.click()} className="h-9 w-9 rounded-full hover:bg-muted shrink-0 flex items-center justify-center">
             <Paperclip className="h-5 w-5 text-primary" />
           </button>
-          <button className="p-2 rounded-full hover:bg-muted shrink-0 mb-0.5 lg:hidden">
+          <button className="h-9 w-9 rounded-full hover:bg-muted shrink-0 lg:hidden flex items-center justify-center">
             <Camera className="h-5 w-5 text-primary" />
           </button>
-          <div className="flex-1 flex items-center bg-muted rounded-full px-4 py-2 min-h-[40px]">
+          <div className="flex-1 min-w-0 flex items-center bg-muted rounded-full px-3 py-2 min-h-[40px]">
             <input value={input} onChange={handleInputChange} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && !isSending && handleSend()}
-              placeholder="Aa" className="flex-1 bg-transparent text-[15px] outline-none text-foreground placeholder:text-muted-foreground" />
+              placeholder="Aa" className="flex-1 min-w-0 bg-transparent text-[15px] outline-none text-foreground placeholder:text-muted-foreground" />
             <button className="ml-1.5 shrink-0"><Smile className="h-5 w-5 text-primary" /></button>
           </div>
           {(input.trim() || pendingFile) ? (
-            <motion.button whileTap={{ scale: 0.85 }} onClick={handleSend} disabled={isSending} className="p-2 rounded-full shrink-0 mb-0.5 disabled:opacity-50">
+            <motion.button whileTap={{ scale: 0.85 }} onClick={handleSend} disabled={isSending} className="h-9 w-9 rounded-full shrink-0 flex items-center justify-center disabled:opacity-50">
               {isSending ? <Loader2 className="h-5 w-5 text-primary animate-spin" /> : <Send className="h-5 w-5 text-primary" />}
             </motion.button>
           ) : (
             <motion.button whileTap={{ scale: 0.85 }} onClick={() => sendMessage.mutate({ conversationId: selectedChat, content: '👍' })}
-              className="p-2 rounded-full shrink-0 mb-0.5">
+              className="h-9 w-9 rounded-full shrink-0 flex items-center justify-center">
               <ThumbsUp className="h-5 w-5 text-primary" />
             </motion.button>
           )}
