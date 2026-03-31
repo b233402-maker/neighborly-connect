@@ -3,6 +3,7 @@ import { Slider } from "@/components/ui/slider";
 import { Eye, Layers, Navigation } from "lucide-react";
 import { usePosts } from "@/hooks/usePosts";
 import { useNearbyUsers } from "@/hooks/useNearbyUsers";
+import { useFriendIds } from "@/hooks/useFollows";
 import { useUserLocation, filterByPrivacy } from "@/hooks/useLocation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -40,6 +41,7 @@ export function MiniMap() {
 
   const { data: posts } = usePosts();
   const { data: nearbyUsers } = useNearbyUsers();
+  const { data: friendIds } = useFriendIds();
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
@@ -100,7 +102,8 @@ export function MiniMap() {
       location.lat, location.lng,
       posts.map(p => ({ ...p, privacy_level: p.author?.privacy_level || 'public', user_id: p.author_id })),
       radius[0],
-      user?.id
+      user?.id,
+      friendIds
     );
 
     visiblePosts.forEach((post) => {
@@ -121,7 +124,8 @@ export function MiniMap() {
         location.lat, location.lng,
         nearbyUsers,
         radius[0],
-        user?.id
+        user?.id,
+        friendIds
       );
 
       visibleUsers.slice(0, 10).forEach((u) => {
@@ -143,7 +147,8 @@ export function MiniMap() {
         location.lat, location.lng,
         posts.map(p => ({ ...p, privacy_level: p.author?.privacy_level || 'public', user_id: p.author_id })),
         radius[0],
-        user?.id
+        user?.id,
+        friendIds
       ).slice(0, 5)
     : [];
 

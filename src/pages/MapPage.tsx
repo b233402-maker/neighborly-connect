@@ -5,7 +5,8 @@ import { ArrowLeft, Navigation, Search, Filter, X, Users, MapPin } from "lucide-
 import { MobileNav } from "@/components/layout/MobileNav";
 import { usePosts } from "@/hooks/usePosts";
 import { useNearbyUsers } from "@/hooks/useNearbyUsers";
-import { useUserLocation, filterByPrivacy, blurCoordinates } from "@/hooks/useLocation";
+import { useFriendIds } from "@/hooks/useFollows";
+import { useUserLocation, filterByPrivacy } from "@/hooks/useLocation";
 import { useAuth } from "@/contexts/AuthContext";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -33,6 +34,7 @@ export default function MapPage() {
 
   const { data: posts } = usePosts();
   const { data: nearbyUsers } = useNearbyUsers();
+  const { data: friendIds } = useFriendIds();
 
   const sel = (posts || []).find((p) => p.id === selectedPostId);
 
@@ -81,7 +83,8 @@ export default function MapPage() {
       location.lat, location.lng, 
       filteredPosts.map(p => ({ ...p, privacy_level: p.author?.privacy_level || 'public', user_id: p.author_id })),
       radius[0],
-      user?.id
+      user?.id,
+      friendIds
     );
 
     visiblePosts.forEach((post) => {
@@ -105,7 +108,8 @@ export default function MapPage() {
       location.lat, location.lng,
       nearbyUsers,
       radius[0],
-      user?.id
+      user?.id,
+      friendIds
     );
 
     visibleUsers.forEach((u) => {
