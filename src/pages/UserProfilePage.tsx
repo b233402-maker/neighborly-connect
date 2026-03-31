@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Star, Shield, Crown, MapPin, Calendar, MessageCircle, Heart, HandHelping, Send, UserPlus, UserCheck, Users } from "lucide-react";
+import { FollowListDialog } from "@/components/social/FollowListDialog";
 import { motion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
