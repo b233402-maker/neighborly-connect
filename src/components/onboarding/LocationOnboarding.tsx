@@ -1,36 +1,42 @@
 import { useState } from "react";
-import { MapPin, Globe, Users, Crosshair, Radio, ChevronRight, Shield, X } from "lucide-react";
+import { MapPin, Globe, Users, Crosshair, Radio, ChevronRight, Shield } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { useUpdateProfile } from "@/hooks/useProfile";
 
 interface LocationOnboardingProps {
   open: boolean;
   onComplete: () => void;
 }
 
-type VisibilityOption = "nearby" | "friends" | "radius" | "public";
+type VisibilityOption = "nearby" | "friends" | "blurred" | "public";
 
 const visibilityOptions: { id: VisibilityOption; label: string; description: string; icon: React.ElementType; color: string }[] = [
   { id: "nearby", label: "Nearby Only", description: "Only neighbors within 2km can see your posts", icon: Radio, color: "text-success" },
   { id: "friends", label: "Friends Only", description: "Only people you've connected with", icon: Users, color: "text-primary" },
-  { id: "radius", label: "Specific Radius", description: "Choose a custom discovery radius", icon: Crosshair, color: "text-accent" },
+  { id: "blurred", label: "Blurred", description: "500m approximate area (default privacy)", icon: Crosshair, color: "text-accent" },
   { id: "public", label: "Public", description: "Visible to everyone on the platform", icon: Globe, color: "text-muted-foreground" },
 ];
 
 export function LocationOnboarding({ open, onComplete }: LocationOnboardingProps) {
   const [step, setStep] = useState(0);
-  const [visibility, setVisibility] = useState<VisibilityOption>("nearby");
-  const [radius, setRadius] = useState(5);
+  const [visibility, setVisibility] = useState<VisibilityOption>("blurred");
   const [locationGranted, setLocationGranted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const updateProfile = useUpdateProfile();
 
   const requestLocation = () => {
     setLoading(true);
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
-        () => {
+        (pos) => {
           setLocationGranted(true);
           setLoading(false);
+          // Save real location to profile
+          updateProfile.mutate({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          });
           toast.success("Location enabled! 📍", { description: "We'll only show your approximate area." });
           setStep(1);
         },
@@ -49,10 +55,9 @@ export function LocationOnboarding({ open, onComplete }: LocationOnboardingProps
   };
 
   const handleComplete = () => {
-    localStorage.setItem("neighborly-visibility", visibility);
-    if (visibility === "radius") {
-      localStorage.setItem("neighborly-radius", String(radius));
-    }
+    // Save privacy level to profile
+    updateProfile.mutate({ privacy_level: visibility });
+    localStorage.setItem("neighborly-onboarded", "true");
     onComplete();
     toast.success("You're all set! 🎉", { description: "Welcome to your neighborhood." });
   };
@@ -79,7 +84,6 @@ export function LocationOnboarding({ open, onComplete }: LocationOnboardingProps
               {step === 0 && (
                 <motion.div key="step0" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
                   className="px-6 pb-6 pt-2">
-                  {/* Location Step */}
                   <div className="text-center mb-6">
                     <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                       <MapPin className="h-10 w-10 text-primary" />
@@ -124,7 +128,6 @@ export function LocationOnboarding({ open, onComplete }: LocationOnboardingProps
               {step === 1 && (
                 <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
                   className="px-6 pb-6 pt-2">
-                  {/* Visibility Step */}
                   <div className="text-center mb-5">
                     <h2 className="font-display font-bold text-xl text-foreground mb-1">Who can discover you?</h2>
                     <p className="text-sm text-muted-foreground">Choose who can see your posts and profile</p>
@@ -151,27 +154,6 @@ export function LocationOnboarding({ open, onComplete }: LocationOnboardingProps
                       </button>
                     ))}
                   </div>
-
-                  {/* Radius slider (only when radius selected) */}
-                  <AnimatePresence>
-                    {visibility === "radius" && (
-                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden mb-4">
-                        <div className="feed-card">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-medium text-foreground">Discovery Radius</span>
-                            <span className="text-sm font-bold text-primary">{radius} km</span>
-                          </div>
-                          <input type="range" min={1} max={50} value={radius} onChange={(e) => setRadius(Number(e.target.value))}
-                            className="w-full accent-primary" />
-                          <div className="flex justify-between mt-1">
-                            <span className="text-[10px] text-muted-foreground">1 km</span>
-                            <span className="text-[10px] text-muted-foreground">50 km</span>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
 
                   <button onClick={handleComplete}
                     className="w-full py-3 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors flex items-center justify-center gap-2">
