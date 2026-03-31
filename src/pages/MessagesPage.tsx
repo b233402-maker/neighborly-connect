@@ -90,7 +90,12 @@ function ConversationListItem({ conv, onSelect }: { conv: any; onSelect: (id: st
         <div className="flex items-center gap-1.5">
           {isOnline && <span className="block h-1.5 w-1.5 rounded-full bg-success shrink-0" />}
           <p className={`text-sm truncate ${conv.unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>
-            {conv.lastMessage?.content || 'No messages yet'}
+            {conv.lastMessage?.attachment_url ? (
+              <span className="inline-flex items-center gap-1">
+                {conv.lastMessage.attachment_type?.startsWith('image/') ? <ImageIcon className="h-3 w-3 inline" /> : <FileText className="h-3 w-3 inline" />}
+                {conv.lastMessage.content?.startsWith('📎') ? conv.lastMessage.attachment_name || 'File' : conv.lastMessage.content || 'Attachment'}
+              </span>
+            ) : conv.lastMessage?.content || 'No messages yet'}
           </p>
         </div>
       </div>
