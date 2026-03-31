@@ -112,7 +112,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // Defer profile fetch to avoid Supabase deadlock
           setTimeout(async () => {
             const p = await fetchProfile(newSession.user.id);
-            if (p) setProfile(p);
+            if (p) {
+              if (p.is_banned) {
+                toast.error('Your account has been suspended. Please contact support.');
+                await supabase.auth.signOut();
+                setUser(null);
+                setSession(null);
+                setProfile(null);
+                setIsLoading(false);
+                return;
+              }
+              setProfile(p);
+            }
             await checkAdminRole(newSession.user.id);
             setIsLoading(false);
             // Check subscription in background (syncs is_pro)
