@@ -81,7 +81,8 @@ export function useOnlineUsers(): Set<string> {
 
 // Typing indicator via broadcast
 export function useTypingIndicator(conversationId: string | null) {
-  const { user } = useAuth();
+  const auth = useContext(AuthContext);
+  const user = auth?.user ?? null;
   const [typingUserId, setTypingUserId] = useState<string | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
