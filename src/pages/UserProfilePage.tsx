@@ -85,6 +85,9 @@ export default function UserProfilePage() {
   const { data: posts } = useUserPosts(userId || "");
   const { startChat, isPending: chatPending } = useStartConversation();
   const isOnline = useIsUserOnline(userId);
+  const { data: followStatus } = useFollowStatus(userId);
+  const { data: followCounts } = useFollowCounts(userId);
+  const toggleFollow = useToggleFollow();
 
   const isOwnProfile = user?.id === userId;
 
