@@ -38,7 +38,7 @@ export function useNotifications() {
       const actorIds = [...new Set(notifs.filter((n) => n.actor_id).map((n) => n.actor_id!))];
       const { data: profiles } = actorIds.length
         ? await supabase
-            .from('profiles')
+            .from('profiles_public')
             .select('user_id, display_name, avatar_url')
             .in('user_id', actorIds)
         : { data: [] };

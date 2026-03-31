@@ -58,7 +58,7 @@ function useFollowingList(userId: string | undefined) {
 
       const ids = data.map((f) => f.following_id);
       const { data: profiles, error: pErr } = await supabase
-        .from("profiles")
+        .from("profiles_public")
         .select("user_id, display_name, avatar_url, bio, verified, is_pro")
         .in("user_id", ids);
       if (pErr) throw pErr;

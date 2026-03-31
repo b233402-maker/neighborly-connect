@@ -29,7 +29,7 @@ function useUserProfile(userId: string) {
     queryKey: ["user-profile", userId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("profiles")
+        .from("profiles_public")
         .select("user_id, display_name, avatar_url, bio, karma, verified, is_pro, privacy_level, created_at")
         .eq("user_id", userId)
         .single();

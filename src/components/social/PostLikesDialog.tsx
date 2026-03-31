@@ -26,7 +26,7 @@ function usePostLikers(postId: string | null) {
 
       const ids = likes.map((l) => l.user_id);
       const { data: profiles, error: pErr } = await supabase
-        .from("profiles")
+        .from("profiles_public")
         .select("user_id, display_name, avatar_url, verified")
         .in("user_id", ids);
       if (pErr) throw pErr;

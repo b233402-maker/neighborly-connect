@@ -126,7 +126,7 @@ export function useConversationMessages(conversationId: string | null) {
       // Fetch sender profiles
       const senderIds = [...new Set(messages.map((m) => m.sender_id))];
       const { data: profiles } = await supabase
-        .from('profiles')
+        .from('profiles_public')
         .select('user_id, display_name, avatar_url')
         .in('user_id', senderIds);
 
