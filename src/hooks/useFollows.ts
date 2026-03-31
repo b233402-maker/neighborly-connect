@@ -89,14 +89,10 @@ export function useToggleFollow() {
         if (error) throw error;
       }
     },
-    onSuccess: (_, { targetUserId, isFollowing }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['follow-status'] });
       queryClient.invalidateQueries({ queryKey: ['follow-counts'] });
       queryClient.invalidateQueries({ queryKey: ['friends'] });
-      toast.success(isFollowing ? 'Unfollowed' : 'Following!');
-    },
-    onError: () => {
-      toast.error('Failed to update follow status');
     },
   });
 }
