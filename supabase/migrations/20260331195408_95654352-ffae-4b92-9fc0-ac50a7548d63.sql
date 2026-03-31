@@ -1,0 +1,2 @@
+ALTER TABLE public.profiles DROP CONSTRAINT profiles_privacy_level_check;
+ALTER TABLE public.profiles ADD CONSTRAINT profiles_privacy_level_check CHECK (privacy_level = ANY (ARRAY['nearby'::text, 'friends'::text, 'blurred'::text, 'public'::text]));
