@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, Send, Phone, Video, MoreVertical, CheckCheck, Smile, Paperclip, Mic } from "lucide-react";
-import { motion } from "framer-motion";
+import { Search, Send, Phone, Video, MoreVertical, CheckCheck, Smile, Paperclip, Mic, X, FileText, Image as ImageIcon, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { useConversations, useConversationMessages, useSendMessage } from "@/hooks/useMessages";
+import { useConversations, useConversationMessages, useSendMessage, useUploadAttachment } from "@/hooks/useMessages";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSearchParams } from "react-router-dom";
 import { useIsUserOnline, useTypingIndicator } from "@/hooks/usePresence";
-import { useOnlineUsers } from "@/hooks/usePresence";
 
 function getTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
