@@ -3,7 +3,7 @@ import { Star, Shield, Crown, MapPin, Calendar, Edit3, Users, HandHelping, Messa
 import { motion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
-import { usePosts } from "@/hooks/usePosts";
+import { usePosts, flattenPostPages } from "@/hooks/usePosts";
 import { useUpdateProfile } from "@/hooks/useProfile";
 import { useFollowCounts } from "@/hooks/useFollows";
 import { FollowListDialog } from "@/components/social/FollowListDialog";
@@ -96,8 +96,8 @@ export default function ProfilePage() {
   const [followListTab, setFollowListTab] = useState<"followers" | "following">("followers");
   const { data: badgeStats, isLoading: badgeLoading } = useBadgeStats(user?.id);
 
-  const { data: allPosts } = usePosts();
-  const userPosts = (allPosts || []).filter((p) => p.author_id === user?.id);
+  const { data: allPostsData } = usePosts();
+  const userPosts = flattenPostPages(allPostsData).filter((p) => p.author_id === user?.id);
 
   const startEdit = () => {
     setEditName(profile?.display_name || '');

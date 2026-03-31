@@ -1,9 +1,9 @@
-import { useState, memo } from "react";
+import { useState, memo, useRef, useEffect } from "react";
 import { Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { PostCard } from "./PostCard";
 import { CreatePostModal } from "./CreatePostModal";
-import { usePosts } from "@/hooks/usePosts";
+import { usePosts, flattenPostPages } from "@/hooks/usePosts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFeedStore } from "@/stores/feedStore";
 
@@ -21,8 +21,25 @@ const MAX_ANIMATED = 8;
 export function FeedColumn() {
   const [showCreate, setShowCreate] = useState(false);
   const { activeTab, setActiveTab } = useFeedStore();
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  const { data: posts, isLoading } = usePosts(filterMap[activeTab]);
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = usePosts(filterMap[activeTab]);
+  const posts = flattenPostPages(data);
+
+  // Intersection observer for infinite scroll
+  useEffect(() => {
+    if (!loadMoreRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   return (
     <>
@@ -59,7 +76,7 @@ export function FeedColumn() {
         )}
 
         {/* Posts */}
-        {!isLoading && (posts || []).map((post, i) => (
+        {!isLoading && posts.map((post, i) => (
           <motion.div
             key={post.id}
             initial={i < MAX_ANIMATED ? { opacity: 0, y: 20 } : false}
@@ -70,7 +87,19 @@ export function FeedColumn() {
           </motion.div>
         ))}
 
-        {!isLoading && (!posts || posts.length === 0) && (
+        {/* Load more trigger */}
+        {!isLoading && hasNextPage && (
+          <div ref={loadMoreRef} className="flex justify-center py-4">
+            {isFetchingNextPage && (
+              <div className="space-y-4 w-full">
+                <Skeleton className="h-48 rounded-2xl" />
+                <Skeleton className="h-48 rounded-2xl" />
+              </div>
+            )}
+          </div>
+        )}
+
+        {!isLoading && posts.length === 0 && (
           <div className="feed-card text-center py-12">
             <p className="text-muted-foreground">No posts yet. Be the first to post!</p>
           </div>
