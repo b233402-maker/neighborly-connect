@@ -14,6 +14,9 @@ export interface ConversationItem {
     content: string;
     created_at: string;
     sender_id: string;
+    attachment_url?: string | null;
+    attachment_type?: string | null;
+    attachment_name?: string | null;
   } | null;
   unreadCount: number;
 }
@@ -83,6 +86,9 @@ export function useConversations() {
             content: m.content,
             created_at: m.created_at,
             sender_id: m.sender_id,
+            attachment_url: (m as any).attachment_url,
+            attachment_type: (m as any).attachment_type,
+            attachment_name: (m as any).attachment_name,
           };
         }
         if (m.sender_id !== user.id && !m.read && convMap[m.conversation_id]) {
@@ -145,15 +151,24 @@ export function useSendMessage() {
     mutationFn: async ({
       conversationId,
       content,
+      attachmentUrl,
+      attachmentType,
+      attachmentName,
     }: {
       conversationId: string;
       content: string;
+      attachmentUrl?: string;
+      attachmentType?: string;
+      attachmentName?: string;
     }) => {
       if (!user) throw new Error('Not authenticated');
       const { error } = await supabase.from('messages').insert({
         conversation_id: conversationId,
         sender_id: user.id,
         content,
+        attachment_url: attachmentUrl || null,
+        attachment_type: attachmentType || null,
+        attachment_name: attachmentName || null,
       });
       if (error) throw error;
     },
@@ -163,6 +178,37 @@ export function useSendMessage() {
     },
     onError: () => {
       toast.error('Failed to send message');
+    },
+  });
+}
+
+export function useUploadAttachment() {
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (file: File) => {
+      if (!user) throw new Error('Not authenticated');
+      const ext = file.name.split('.').pop() || 'bin';
+      const path = `${user.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+
+      const { error } = await supabase.storage
+        .from('chat-attachments')
+        .upload(path, file);
+
+      if (error) throw error;
+
+      const { data: urlData } = supabase.storage
+        .from('chat-attachments')
+        .getPublicUrl(path);
+
+      return {
+        url: urlData.publicUrl,
+        type: file.type,
+        name: file.name,
+      };
+    },
+    onError: () => {
+      toast.error('Failed to upload file');
     },
   });
 }
