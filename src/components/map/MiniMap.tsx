@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Eye, Layers, Navigation } from "lucide-react";
-import { usePosts } from "@/hooks/usePosts";
+import { usePosts, flattenPostPages } from "@/hooks/usePosts";
 import { useNearbyUsers } from "@/hooks/useNearbyUsers";
 import { useFriendIds } from "@/hooks/useFollows";
 import { useUserLocation, filterByPrivacy } from "@/hooks/useLocation";

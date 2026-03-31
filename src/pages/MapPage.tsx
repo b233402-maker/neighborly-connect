@@ -36,12 +36,13 @@ export default function MapPage() {
 
   const isPro = profile?.is_pro || false;
 
-  const { data: posts } = usePosts();
+  const { data: postsData } = usePosts();
+  const posts = flattenPostPages(postsData);
   const { data: nearbyUsers } = useNearbyUsers();
   const { data: friendIds } = useFriendIds();
   const { data: searchResults } = useSearchUsers(searchQuery);
 
-  const sel = (posts || []).find((p) => p.id === selectedPostId);
+  const sel = posts.find((p) => p.id === selectedPostId);
 
   // Init map
   useEffect(() => {

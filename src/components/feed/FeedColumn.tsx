@@ -1,4 +1,4 @@
-import { useState, memo } from "react";
+import { useState, memo, useRef, useEffect } from "react";
 import { Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { PostCard } from "./PostCard";
