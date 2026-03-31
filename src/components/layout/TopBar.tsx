@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Search, MapPin, ChevronDown, Eye, Users, Globe, Crosshair, Loader2, User, FileText, X } from "lucide-react";
+import { Search, MapPin, ChevronDown, Eye, Users, Globe, Crosshair, Loader2, User, FileText, X, Settings, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUpdateProfile } from "@/hooks/useProfile";
 import { motion, AnimatePresence } from "framer-motion";
