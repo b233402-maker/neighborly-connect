@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Eye, Layers } from "lucide-react";
-import { mockPosts } from "@/data/mockData";
+import { usePosts } from "@/hooks/usePosts";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-// Fix default marker icon
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
@@ -15,13 +14,25 @@ L.Icon.Default.mergeOptions({
 
 const CENTER: [number, number] = [40.7128, -74.006];
 
+function getTimeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
 export function MiniMap() {
-  // Renders the mini-map widget for the right column
   const [radius, setRadius] = useState([2]);
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const circleRef = useRef<L.Circle | null>(null);
-  const postCirclesRef = useRef<L.Circle[]>([]);
+  const markersRef = useRef<L.Circle[]>([]);
+
+  const { data: posts } = usePosts();
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
@@ -35,7 +46,6 @@ export function MiniMap() {
 
     L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(map);
 
-    // Privacy blur circle
     const circle = L.circle(CENTER, {
       radius: radius[0] * 1000,
       color: "hsl(217, 91%, 53%)",
@@ -46,21 +56,7 @@ export function MiniMap() {
     }).addTo(map);
     circleRef.current = circle;
 
-    // Post markers
-    mockPosts.forEach((post) => {
-      const c = L.circle([post.lat, post.lng], {
-        radius: 200,
-        color: post.category === "urgent" ? "hsl(38, 92%, 50%)" : "hsl(160, 84%, 39%)",
-        fillColor: post.category === "urgent" ? "hsl(38, 92%, 50%)" : "hsl(160, 84%, 39%)",
-        fillOpacity: 0.2,
-        weight: 1.5,
-      }).addTo(map);
-      postCirclesRef.current.push(c);
-    });
-
     mapRef.current = map;
-
-    // Ensure proper sizing
     setTimeout(() => map.invalidateSize(), 100);
 
     return () => {
@@ -69,11 +65,28 @@ export function MiniMap() {
     };
   }, []);
 
-  // Update radius circle when slider changes
+  // Update markers when posts change
   useEffect(() => {
-    if (circleRef.current) {
-      circleRef.current.setRadius(radius[0] * 1000);
-    }
+    if (!mapRef.current || !posts) return;
+
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+
+    posts.forEach((post) => {
+      if (!post.lat || !post.lng) return;
+      const c = L.circle([post.lat, post.lng], {
+        radius: 200,
+        color: post.category === "urgent" ? "hsl(38, 92%, 50%)" : "hsl(160, 84%, 39%)",
+        fillColor: post.category === "urgent" ? "hsl(38, 92%, 50%)" : "hsl(160, 84%, 39%)",
+        fillOpacity: 0.2,
+        weight: 1.5,
+      }).addTo(mapRef.current!);
+      markersRef.current.push(c);
+    });
+  }, [posts]);
+
+  useEffect(() => {
+    circleRef.current?.setRadius(radius[0] * 1000);
   }, [radius]);
 
   return (
@@ -83,7 +96,6 @@ export function MiniMap() {
         <div className="relative" style={{ height: 360 }}>
           <div ref={mapContainerRef} className="h-full w-full rounded-2xl" />
 
-          {/* Overlay controls */}
           <div className="absolute top-3 right-3 flex flex-col gap-2 z-[1000]">
             <button className="h-8 w-8 rounded-lg bg-card/90 backdrop-blur flex items-center justify-center shadow-sm border border-border hover:bg-card transition-colors">
               <Layers className="h-4 w-4 text-foreground" />
@@ -94,20 +106,12 @@ export function MiniMap() {
           </div>
         </div>
 
-        {/* Radius Slider */}
         <div className="p-4 border-t border-border">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-foreground">Discovery Radius</span>
             <span className="text-xs font-bold text-primary">{radius[0]} km</span>
           </div>
-          <Slider
-            value={radius}
-            onValueChange={setRadius}
-            min={1}
-            max={50}
-            step={1}
-            className="w-full"
-          />
+          <Slider value={radius} onValueChange={setRadius} min={1} max={50} step={1} className="w-full" />
           <div className="flex justify-between mt-1">
             <span className="text-[10px] text-muted-foreground">1 km</span>
             <span className="text-[10px] text-muted-foreground">50 km</span>
@@ -119,17 +123,20 @@ export function MiniMap() {
       <div className="feed-card">
         <h4 className="font-display font-semibold text-sm text-foreground mb-3">Nearby Activity</h4>
         <div className="space-y-3">
-          {mockPosts.slice(0, 3).map((post) => (
+          {(posts || []).slice(0, 3).map((post) => (
             <div key={post.id} className="flex items-center gap-3">
               <div className={`h-2 w-2 rounded-full ${
-                post.category === "urgent" ? "bg-accent animate-pulse-dot" : "bg-success"
+                post.category === "urgent" ? "bg-accent animate-pulse" : "bg-success"
               }`} />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-foreground truncate">{post.title}</p>
-                <p className="text-[10px] text-muted-foreground">{post.createdAt} · {post.author.name}</p>
+                <p className="text-[10px] text-muted-foreground">{getTimeAgo(post.created_at)} · {post.author?.display_name || 'User'}</p>
               </div>
             </div>
           ))}
+          {(!posts || posts.length === 0) && (
+            <p className="text-xs text-muted-foreground text-center py-4">No nearby activity yet</p>
+          )}
         </div>
       </div>
     </div>
