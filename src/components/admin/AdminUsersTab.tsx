@@ -4,18 +4,34 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { Search, Crown, CheckCircle, Ban, ShieldCheck, Loader2 } from 'lucide-react';
+import { Search, Crown, CheckCircle, Ban, ShieldCheck, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function AdminUsersTab() {
-  const { data: users, isLoading } = useAdminUsers();
   const { user: currentUser } = useAuth();
+  const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [banningId, setBanningId] = useState<string | null>(null);
+  const [debounceTimer, setDebounceTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const queryClient = useQueryClient();
+
+  const { data, isLoading, isFetching } = useAdminUsers(page, debouncedSearch);
+  const users = data?.users || [];
+  const totalCount = data?.totalCount || 0;
+  const totalPages = data?.totalPages || 1;
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    if (debounceTimer) clearTimeout(debounceTimer);
+    setDebounceTimer(setTimeout(() => {
+      setDebouncedSearch(value);
+      setPage(0);
+    }, 400));
+  };
 
   const handleBanToggle = async (userId: string, currentlyBanned: boolean) => {
     const action = currentlyBanned ? 'unban' : 'ban';
@@ -39,14 +55,7 @@ export function AdminUsersTab() {
 
   if (isLoading) return <TableSkeleton />;
 
-  const filtered = (users || []).filter(
-    (u) =>
-      u.display_name.toLowerCase().includes(search.toLowerCase()) ||
-      u.email?.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const totalKarma = filtered.reduce((sum, u) => sum + u.karma, 0);
-  const bannedCount = filtered.filter((u) => (u as any).is_banned).length;
+  const bannedCount = users.filter((u: any) => u.is_banned).length;
 
   return (
     <div className="space-y-4">
@@ -58,19 +67,18 @@ export function AdminUsersTab() {
             placeholder="Search users by name or email..."
             className="pl-10 rounded-xl"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
           />
         </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span>{filtered.length} users</span>
-          <span>•</span>
-          <span>{totalKarma} total karma</span>
+          <span>{totalCount} users total</span>
           {bannedCount > 0 && (
             <>
               <span>•</span>
               <span className="text-destructive">{bannedCount} banned</span>
             </>
           )}
+          {isFetching && <Loader2 className="w-3 h-3 animate-spin" />}
         </div>
       </div>
 
@@ -90,8 +98,8 @@ export function AdminUsersTab() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((user) => {
-                const isBanned = (user as any).is_banned === true;
+              {users.map((user: any) => {
+                const isBanned = user.is_banned === true;
                 const isSelf = user.user_id === currentUser?.id;
 
                 return (
@@ -174,10 +182,35 @@ export function AdminUsersTab() {
             </tbody>
           </table>
         </div>
-        {filtered.length === 0 && (
+        {users.length === 0 && (
           <div className="p-8 text-center text-muted-foreground text-sm">No users found</div>
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            Showing {page * 25 + 1}–{Math.min((page + 1) * 25, totalCount)} of {totalCount}
+          </p>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" disabled={page === 0} onClick={() => setPage(page - 1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+              const p = totalPages <= 5 ? i : Math.max(0, Math.min(page - 2, totalPages - 5)) + i;
+              return (
+                <Button key={p} variant={p === page ? 'default' : 'outline'} size="icon" className="h-8 w-8 rounded-lg text-xs" onClick={() => setPage(p)}>
+                  {p + 1}
+                </Button>
+              );
+            })}
+            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

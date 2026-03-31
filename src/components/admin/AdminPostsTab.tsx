@@ -5,23 +5,33 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, Trash2, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { Search, Trash2, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export function AdminPostsTab() {
-  const { data: posts, isLoading } = useAdminPosts();
+  const [page, setPage] = useState(0);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [debounceTimer, setDebounceTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+
   const deletePost = useDeletePost();
   const bulkDelete = useBulkDeletePosts();
-  const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const { data, isLoading, isFetching } = useAdminPosts(page, debouncedSearch);
+  const posts = data?.posts || [];
+  const totalCount = data?.totalCount || 0;
+  const totalPages = data?.totalPages || 1;
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    if (debounceTimer) clearTimeout(debounceTimer);
+    setDebounceTimer(setTimeout(() => {
+      setDebouncedSearch(value);
+      setPage(0);
+      setSelected(new Set());
+    }, 400));
+  };
 
   if (isLoading) return <TableSkeleton />;
-
-  const filtered = (posts || []).filter(
-    (p) =>
-      p.title.toLowerCase().includes(search.toLowerCase()) ||
-      p.description.toLowerCase().includes(search.toLowerCase())
-  );
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -33,10 +43,10 @@ export function AdminPostsTab() {
   };
 
   const toggleAll = () => {
-    if (selected.size === filtered.length) {
+    if (selected.size === posts.length) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(filtered.map((p) => p.id)));
+      setSelected(new Set(posts.map((p: any) => p.id)));
     }
   };
 
@@ -58,7 +68,7 @@ export function AdminPostsTab() {
             placeholder="Search posts..."
             className="pl-10 rounded-xl"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
           />
         </div>
         {selected.size > 0 && (
@@ -73,7 +83,10 @@ export function AdminPostsTab() {
             Delete {selected.size} selected
           </Button>
         )}
-        <span className="text-xs text-muted-foreground">{filtered.length} posts</span>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>{totalCount} posts total</span>
+          {isFetching && <Loader2 className="w-3 h-3 animate-spin" />}
+        </div>
       </div>
 
       {/* Table */}
@@ -84,7 +97,7 @@ export function AdminPostsTab() {
               <tr className="border-b border-border bg-muted/30">
                 <th className="p-4 w-10">
                   <Checkbox
-                    checked={filtered.length > 0 && selected.size === filtered.length}
+                    checked={posts.length > 0 && selected.size === posts.length}
                     onCheckedChange={toggleAll}
                   />
                 </th>
@@ -98,7 +111,7 @@ export function AdminPostsTab() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((post) => (
+              {posts.map((post: any) => (
                 <tr
                   key={post.id}
                   className={`border-b border-border/50 hover:bg-muted/20 transition-colors ${
@@ -153,10 +166,35 @@ export function AdminPostsTab() {
             </tbody>
           </table>
         </div>
-        {filtered.length === 0 && (
+        {posts.length === 0 && (
           <div className="p-8 text-center text-muted-foreground text-sm">No posts found</div>
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            Showing {page * 25 + 1}–{Math.min((page + 1) * 25, totalCount)} of {totalCount}
+          </p>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" disabled={page === 0} onClick={() => setPage(page - 1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+              const p = totalPages <= 5 ? i : Math.max(0, Math.min(page - 2, totalPages - 5)) + i;
+              return (
+                <Button key={p} variant={p === page ? 'default' : 'outline'} size="icon" className="h-8 w-8 rounded-lg text-xs" onClick={() => setPage(p)}>
+                  {p + 1}
+                </Button>
+              );
+            })}
+            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

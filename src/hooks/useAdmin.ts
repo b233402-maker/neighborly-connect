@@ -3,32 +3,59 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useMemo } from 'react';
 
+const ADMIN_PAGE_SIZE = 25;
+
 // ─── Basic Data Hooks ───────────────────────────────────────
 
-export function useAdminUsers() {
+export function useAdminUsers(page = 0, search = '') {
   return useQuery({
-    queryKey: ['admin', 'users'],
+    queryKey: ['admin', 'users', page, search],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const from = page * ADMIN_PAGE_SIZE;
+      const to = from + ADMIN_PAGE_SIZE - 1;
+
+      let query = supabase
         .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+      if (search) {
+        query = query.or(`display_name.ilike.%${search}%,email.ilike.%${search}%`);
+      }
+
+      const { data, error, count } = await query;
       if (error) throw error;
-      return data || [];
+      return {
+        users: data || [],
+        totalCount: count || 0,
+        totalPages: Math.ceil((count || 0) / ADMIN_PAGE_SIZE),
+      };
     },
+    placeholderData: (prev) => prev,
   });
 }
 
-export function useAdminPosts() {
+export function useAdminPosts(page = 0, search = '') {
   return useQuery({
-    queryKey: ['admin', 'posts'],
+    queryKey: ['admin', 'posts', page, search],
     queryFn: async () => {
-      const { data: posts, error } = await supabase
+      const from = page * ADMIN_PAGE_SIZE;
+      const to = from + ADMIN_PAGE_SIZE - 1;
+
+      let query = supabase
         .from('posts')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+      if (search) {
+        query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
+      }
+
+      const { data: posts, error, count } = await query;
       if (error) throw error;
-      if (!posts?.length) return [];
+      if (!posts?.length) return { posts: [], totalCount: count || 0, totalPages: Math.ceil((count || 0) / ADMIN_PAGE_SIZE) };
 
       const authorIds = [...new Set(posts.map((p) => p.author_id))];
       const { data: profiles } = await supabase
@@ -39,11 +66,13 @@ export function useAdminPosts() {
       const profileMap: Record<string, any> = {};
       (profiles || []).forEach((p) => { profileMap[p.user_id] = p; });
 
-      return posts.map((p) => ({
-        ...p,
-        author: profileMap[p.author_id] || null,
-      }));
+      return {
+        posts: posts.map((p) => ({ ...p, author: profileMap[p.author_id] || null })),
+        totalCount: count || 0,
+        totalPages: Math.ceil((count || 0) / ADMIN_PAGE_SIZE),
+      };
     },
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -106,14 +135,54 @@ export function useAdminStats() {
 // ─── Analytics Hooks ────────────────────────────────────────
 
 export function useAdminAnalytics() {
-  const { data: users } = useAdminUsers();
-  const { data: posts } = useAdminPosts();
+  // For analytics, fetch limited recent data instead of everything
+  const { data: users } = useQuery({
+    queryKey: ['admin', 'analytics-users'],
+    queryFn: async () => {
+      const days30ago = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('created_at, is_pro')
+        .gte('created_at', days30ago)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 60_000,
+  });
+
+  const { data: allUsers } = useQuery({
+    queryKey: ['admin', 'analytics-all-users'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('created_at, is_pro')
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 60_000,
+  });
+
+  const { data: posts } = useQuery({
+    queryKey: ['admin', 'analytics-posts'],
+    queryFn: async () => {
+      const days30ago = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from('posts')
+        .select('created_at, category, type')
+        .gte('created_at', days30ago)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 60_000,
+  });
 
   return useMemo(() => {
-    if (!users || !posts) return null;
+    if (!users || !posts || !allUsers) return null;
 
     const now = new Date();
-    const days30ago = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     // Build daily data for last 30 days
     const dailyData: { date: string; signups: number; posts: number }[] = [];
@@ -154,17 +223,15 @@ export function useAdminAnalytics() {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
 
-    // User growth (cumulative)
-    const sortedUsers = [...users].sort((a, b) => a.created_at.localeCompare(b.created_at));
+    // User growth (cumulative) using all users
     const growthData: { date: string; users: number }[] = [];
     let cumulative = 0;
     const growthMap: Record<string, number> = {};
-    sortedUsers.forEach((u) => {
+    allUsers.forEach((u) => {
       cumulative++;
       const d = u.created_at.slice(0, 10);
       growthMap[d] = cumulative;
     });
-    // Fill in gaps for last 30 days
     let lastVal = 0;
     for (let i = 29; i >= 0; i--) {
       const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
@@ -174,8 +241,8 @@ export function useAdminAnalytics() {
     }
 
     // Pro vs Free
-    const proCount = users.filter((u) => u.is_pro).length;
-    const freeCount = users.length - proCount;
+    const proCount = allUsers.filter((u) => u.is_pro).length;
+    const freeCount = allUsers.length - proCount;
     const userTypeData = [
       { name: 'Pro', value: proCount },
       { name: 'Free', value: freeCount },
@@ -210,7 +277,7 @@ export function useAdminAnalytics() {
         posts: { current: recentPosts, previous: prevPosts },
       },
     };
-  }, [users, posts]);
+  }, [users, posts, allUsers]);
 }
 
 // ─── Pro Users Hook ─────────────────────────────────────────
