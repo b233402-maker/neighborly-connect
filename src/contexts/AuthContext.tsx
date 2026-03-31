@@ -15,6 +15,7 @@ interface Profile {
   karma: number;
   verified: boolean;
   is_pro: boolean;
+  is_banned: boolean;
   lat: number | null;
   lng: number | null;
   privacy_level: string;
