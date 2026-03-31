@@ -2,27 +2,53 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+export interface NotificationItem {
+  id: string;
+  type: string;
+  action: string;
+  target: string | null;
+  read: boolean;
+  created_at: string;
+  post_id: string | null;
+  actor: {
+    user_id: string;
+    display_name: string;
+    avatar_url: string | null;
+  } | null;
+}
+
 export function useNotifications() {
   const { user } = useAuth();
 
   return useQuery({
     queryKey: ['notifications', user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<NotificationItem[]> => {
       if (!user) return [];
-      const { data, error } = await supabase
+      const { data: notifs, error } = await supabase
         .from('notifications')
-        .select(`
-          *,
-          actor:profiles!notifications_actor_id_fkey(user_id, display_name, avatar_url)
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(50);
 
       if (error) throw error;
-      return (data || []).map((n) => ({
+      if (!notifs?.length) return [];
+
+      // Fetch actor profiles
+      const actorIds = [...new Set(notifs.filter((n) => n.actor_id).map((n) => n.actor_id!))];
+      const { data: profiles } = actorIds.length
+        ? await supabase
+            .from('profiles')
+            .select('user_id, display_name, avatar_url')
+            .in('user_id', actorIds)
+        : { data: [] };
+
+      const profileMap: Record<string, any> = {};
+      (profiles || []).forEach((p) => { profileMap[p.user_id] = p; });
+
+      return notifs.map((n) => ({
         ...n,
-        actor: Array.isArray(n.actor) ? n.actor[0] || null : n.actor,
+        actor: n.actor_id ? profileMap[n.actor_id] || null : null,
       }));
     },
     enabled: !!user,
@@ -53,6 +79,7 @@ export function useMarkNotificationsRead() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-count'] });
     },
   });
 }

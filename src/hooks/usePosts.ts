@@ -3,6 +3,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
+export interface PostAuthor {
+  user_id: string;
+  display_name: string;
+  avatar_url: string | null;
+  karma: number;
+  verified: boolean;
+  is_pro: boolean;
+  privacy_level: string;
+}
+
 export interface PostWithAuthor {
   id: string;
   author_id: string;
@@ -18,15 +28,7 @@ export interface PostWithAuthor {
   lng: number | null;
   created_at: string;
   updated_at: string;
-  author: {
-    user_id: string;
-    display_name: string;
-    avatar_url: string | null;
-    karma: number;
-    verified: boolean;
-    is_pro: boolean;
-    privacy_level: string;
-  } | null;
+  author: PostAuthor | null;
   comments_count: number;
   user_has_liked: boolean;
 }
@@ -37,12 +39,10 @@ export function usePosts(filter?: string) {
   return useQuery({
     queryKey: ['posts', filter],
     queryFn: async () => {
+      // Fetch posts
       let query = supabase
         .from('posts')
-        .select(`
-          *,
-          author:profiles!posts_author_id_fkey(user_id, display_name, avatar_url, karma, verified, is_pro, privacy_level)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (filter === 'urgent') {
@@ -51,13 +51,20 @@ export function usePosts(filter?: string) {
         query = query.eq('type', 'offer');
       }
 
-      const { data, error } = await query;
+      const { data: posts, error } = await query;
       if (error) throw error;
+      if (!posts?.length) return [] as PostWithAuthor[];
 
-      // Get comments count and like status in parallel
-      const postIds = (data || []).map((p) => p.id);
+      // Get unique author IDs
+      const authorIds = [...new Set(posts.map((p) => p.author_id))];
+      const postIds = posts.map((p) => p.id);
 
-      const [commentsRes, likesRes] = await Promise.all([
+      // Fetch profiles, comments count, and likes in parallel
+      const [profilesRes, commentsRes, likesRes] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('user_id, display_name, avatar_url, karma, verified, is_pro, privacy_level')
+          .in('user_id', authorIds),
         supabase
           .from('comments')
           .select('post_id')
@@ -68,8 +75,14 @@ export function usePosts(filter?: string) {
               .select('post_id')
               .eq('user_id', user.id)
               .in('post_id', postIds)
-          : Promise.resolve({ data: [] }),
+          : Promise.resolve({ data: [] as { post_id: string }[] }),
       ]);
+
+      // Build lookup maps
+      const profileMap: Record<string, PostAuthor> = {};
+      (profilesRes.data || []).forEach((p) => {
+        profileMap[p.user_id] = p;
+      });
 
       const commentCounts: Record<string, number> = {};
       (commentsRes.data || []).forEach((c) => {
@@ -80,9 +93,9 @@ export function usePosts(filter?: string) {
         ((likesRes as any).data || []).map((l: any) => l.post_id)
       );
 
-      return (data || []).map((post) => ({
+      return posts.map((post) => ({
         ...post,
-        author: Array.isArray(post.author) ? post.author[0] || null : post.author,
+        author: profileMap[post.author_id] || null,
         comments_count: commentCounts[post.id] || 0,
         user_has_liked: likedPostIds.has(post.id),
       })) as PostWithAuthor[];
@@ -166,19 +179,29 @@ export function useComments(postId: string) {
   return useQuery({
     queryKey: ['comments', postId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      if (!postId) return [];
+      const { data: comments, error } = await supabase
         .from('comments')
-        .select(`
-          *,
-          author:profiles!comments_author_id_fkey(user_id, display_name, avatar_url, karma, verified)
-        `)
+        .select('*')
         .eq('post_id', postId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      return (data || []).map((c) => ({
+      if (!comments?.length) return [];
+
+      // Fetch author profiles
+      const authorIds = [...new Set(comments.map((c) => c.author_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, avatar_url, karma, verified')
+        .in('user_id', authorIds);
+
+      const profileMap: Record<string, any> = {};
+      (profiles || []).forEach((p) => { profileMap[p.user_id] = p; });
+
+      return comments.map((c) => ({
         ...c,
-        author: Array.isArray(c.author) ? c.author[0] || null : c.author,
+        author: profileMap[c.author_id] || null,
       }));
     },
     enabled: !!postId,
