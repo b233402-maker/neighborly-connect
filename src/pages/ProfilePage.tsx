@@ -38,6 +38,9 @@ export default function ProfilePage() {
   const [editName, setEditName] = useState('');
   const [editBio, setEditBio] = useState('');
   const updateProfile = useUpdateProfile();
+  const { data: followCounts } = useFollowCounts(user?.id);
+  const [followListOpen, setFollowListOpen] = useState(false);
+  const [followListTab, setFollowListTab] = useState<"followers" | "following">("followers");
 
   // Fetch user's own posts
   const { data: allPosts } = usePosts();
