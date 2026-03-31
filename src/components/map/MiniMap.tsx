@@ -3,6 +3,7 @@ import { Slider } from "@/components/ui/slider";
 import { Eye, Layers, Navigation } from "lucide-react";
 import { usePosts } from "@/hooks/usePosts";
 import { useNearbyUsers } from "@/hooks/useNearbyUsers";
+import { useFriendIds } from "@/hooks/useFollows";
 import { useUserLocation, filterByPrivacy } from "@/hooks/useLocation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
