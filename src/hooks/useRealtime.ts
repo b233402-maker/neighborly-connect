@@ -1,11 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useContext } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { AuthContext } from '@/contexts/AuthContext';
 
 export function useRealtimeSubscriptions() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const auth = useContext(AuthContext);
+  const user = auth?.user ?? null;
 
   useEffect(() => {
     if (!user) return;
