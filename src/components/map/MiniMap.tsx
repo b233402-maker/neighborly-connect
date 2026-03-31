@@ -104,7 +104,8 @@ export function MiniMap() {
       posts.map(p => ({ ...p, privacy_level: p.author?.privacy_level || 'public', user_id: p.author_id })),
       radius[0],
       user?.id,
-      friendIds
+      friendIds,
+      isPro,
     );
 
     visiblePosts.forEach((post) => {
