@@ -51,7 +51,9 @@ serve(async (req) => {
 
     if (hasActiveSub) {
       const sub = subscriptions.data[0];
-      subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
+      if (sub.current_period_end && typeof sub.current_period_end === 'number') {
+        subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
+      }
       priceId = sub.items.data[0]?.price?.id || null;
     }
 
