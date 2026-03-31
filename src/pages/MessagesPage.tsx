@@ -205,6 +205,7 @@ export default function MessagesPage() {
   );
 
   return (
+    <AppLayout>
     <div className="lg:col-span-1 xl:col-span-2">
       <h1 className="font-display font-bold text-2xl text-foreground mb-4">Messages</h1>
       <div className="hidden lg:grid lg:grid-cols-[320px_1fr] gap-4">
