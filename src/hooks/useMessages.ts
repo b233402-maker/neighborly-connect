@@ -57,7 +57,7 @@ export function useConversations() {
       // Get profiles for other participants
       const otherUserIds = [...new Set((otherParticipantsRes.data || []).map((p) => p.user_id))];
       const { data: profiles } = await supabase
-        .from('profiles')
+        .from('profiles_public')
         .select('user_id, display_name, avatar_url')
         .in('user_id', otherUserIds);
 
