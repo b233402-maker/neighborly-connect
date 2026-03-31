@@ -61,7 +61,7 @@ export function usePosts(filter?: string) {
       // Fetch profiles, comments count, and likes in parallel
       const [profilesRes, commentsRes, likesRes] = await Promise.all([
         supabase
-          .from('profiles')
+          .from('profiles_public')
           .select('user_id, display_name, avatar_url, karma, verified, is_pro, privacy_level')
           .in('user_id', authorIds),
         supabase
@@ -226,7 +226,7 @@ export function useComments(postId: string) {
 
       const [profilesRes, likesRes] = await Promise.all([
         supabase
-          .from('profiles')
+          .from('profiles_public')
           .select('user_id, display_name, avatar_url, karma, verified')
           .in('user_id', authorIds),
         user

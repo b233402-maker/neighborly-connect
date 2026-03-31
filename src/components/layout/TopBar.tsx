@@ -58,7 +58,7 @@ export function TopBar() {
 
       const [usersRes, postsRes] = await Promise.all([
         supabase
-          .from('profiles')
+          .from('profiles_public')
           .select('user_id, display_name, avatar_url, bio, karma')
           .or(`display_name.ilike.${searchTerm},bio.ilike.${searchTerm}`)
           .limit(5),

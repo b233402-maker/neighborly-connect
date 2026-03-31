@@ -68,7 +68,7 @@ export function usePostHelpOffers(postId: string) {
 
       const userIds = [...new Set(offers.map((o) => o.user_id))];
       const { data: profiles } = await supabase
-        .from('profiles')
+        .from('profiles_public')
         .select('user_id, display_name, avatar_url, karma, verified')
         .in('user_id', userIds);
 
