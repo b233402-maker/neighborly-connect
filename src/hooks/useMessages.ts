@@ -175,25 +175,11 @@ export function useCreateConversation() {
     mutationFn: async (otherUserId: string) => {
       if (!user) throw new Error('Not authenticated');
 
-      // Create conversation
-      const { data: conv, error: convError } = await supabase
-        .from('conversations')
-        .insert({})
-        .select()
-        .single();
+      const { data, error } = await supabase
+        .rpc('create_conversation_with_participant', { other_user_id: otherUserId });
 
-      if (convError) throw convError;
-
-      // Add both participants
-      const { error: partError } = await supabase
-        .from('conversation_participants')
-        .insert([
-          { conversation_id: conv.id, user_id: user.id },
-          { conversation_id: conv.id, user_id: otherUserId },
-        ]);
-
-      if (partError) throw partError;
-      return conv.id;
+      if (error) throw error;
+      return data as string;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });

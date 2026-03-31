@@ -62,25 +62,6 @@ function useStartConversation() {
   const startChat = async (otherUserId: string) => {
     if (!user) return;
 
-    const { data: myParticipations } = await supabase
-      .from("conversation_participants")
-      .select("conversation_id")
-      .eq("user_id", user.id);
-
-    if (myParticipations?.length) {
-      const convIds = myParticipations.map((p) => p.conversation_id);
-      const { data: otherParticipations } = await supabase
-        .from("conversation_participants")
-        .select("conversation_id")
-        .eq("user_id", otherUserId)
-        .in("conversation_id", convIds);
-
-      if (otherParticipations?.length) {
-        navigate(`/messages?chat=${otherParticipations[0].conversation_id}`);
-        return;
-      }
-    }
-
     createConversation.mutate(otherUserId, {
       onSuccess: (convId) => {
         navigate(`/messages?chat=${convId}`);
