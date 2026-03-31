@@ -124,7 +124,8 @@ export function MiniMap() {
         location.lat, location.lng,
         nearbyUsers,
         radius[0],
-        user?.id
+        user?.id,
+        friendIds
       );
 
       visibleUsers.slice(0, 10).forEach((u) => {
