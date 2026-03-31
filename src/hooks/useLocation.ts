@@ -108,7 +108,10 @@ export function filterByPrivacy<T extends { lat: number | null; lng: number | nu
   items: T[],
   radiusKm: number,
   viewerId?: string,
+  friendIds?: string[],
 ): (T & { displayLat: number; displayLng: number; distanceKm: number })[] {
+  const friendSet = new Set(friendIds || []);
+
   return items
     .filter((item) => {
       if (!item.lat || !item.lng) return false;
@@ -120,8 +123,10 @@ export function filterByPrivacy<T extends { lat: number | null; lng: number | nu
       // Always show own items
       if (isSelf) return true;
 
-      // "friends" privacy - skip (we don't have friends system yet, hide from non-friends)
-      if (privacy === 'friends') return false;
+      // "friends" privacy - only show to friends
+      if (privacy === 'friends') {
+        return itemUserId ? friendSet.has(itemUserId) : false;
+      }
 
       // "nearby" - only show within 2km
       if (privacy === 'nearby') {
