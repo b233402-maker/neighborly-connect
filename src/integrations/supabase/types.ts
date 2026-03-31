@@ -485,6 +485,10 @@ export type Database = {
       }
     }
     Functions: {
+      create_conversation_with_participant: {
+        Args: { other_user_id: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
